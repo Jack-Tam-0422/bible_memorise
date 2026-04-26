@@ -228,7 +228,7 @@ function submitAnswers() {
     const item = document.createElement('p');
     item.className = `grading-item ${isCorrect ? 'ok' : 'bad'}`;
     item.textContent = `第 ${input.dataset.verse} 節空格 ${input.dataset.blank}：${
-      isCorrect ? '正確' : `錯誤（正解：${expected}）`
+      isCorrect ? '正確' : `錯誤（正確：${expected}）`
     }`;
     details.appendChild(item);
   });
