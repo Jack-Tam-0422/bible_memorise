@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1><%= title %></h1>
+      <div class="button-row">
+        <a class="secondary-button" href="/">返回溫習聖經</a>
+      </div>
+      <p><%= message %></p>
+
+      <div class="control-grid">
+        <div class="field">
+          <label for="books">書卷</label>
+          <select id="books" name="books">
+            <option value="">請選擇書卷</option>
+            <% books.forEach((book) => { %>
+              <option value="<%= book %>"><%= book %></option>
+            <% }) %>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="chapter">章</label>
+          <select id="chapter" name="chapter">
+            <option value="">請選擇章</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="verse">節（可選）</label>
+          <select id="verse" name="verse">
+            <option value="">請選擇節</option>
+          </select>
+        </div>
+      </div>
+
+      <p id="memorizeMessage" class="form-message">
+        請先選擇書卷與章，節可不選。不選節時會顯示整章練習。
+      </p>
+      <button id="startMemorizeBtn" type="button">開始背誦</button>
+      <button id="retryMaskBtn" type="button" class="hidden">同節重新出題</button>
+      <button id="submitAnswersBtn" type="button" class="hidden">提交答案</button>
+
+      <section id="memorizeResult" class="scripture-result" aria-live="polite"></section>
+      <section id="gradingResult" class="grading-result" aria-live="polite"></section>
+    </div>
+
+    <script>
+      window.bibleIndex = <%- JSON.stringify(bibleIndex) %>;
+    </script>
+    <script src="/js/memorize.js"></script>
+  </body>
+</html>

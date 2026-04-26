@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1><%= title %></h1>
+      <div class="button-row">
+        <a class="secondary-button" href="/memorize">開始背誦</a>
+      </div>
+      <p><%= message %></p>
+      <div class="control-grid">
+        <div class="field">
+          <label for="books">書卷</label>
+          <select id="books" name="books">
+            <option value="">請選擇書卷</option>
+            <% books.forEach((book) => { %>
+              <option value="<%= book %>"><%= book %></option>
+            <% }) %>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="chapter">章</label>
+          <select id="chapter" name="chapter">
+            <option value="">請選擇章</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="verse">節（可選）</label>
+          <select id="verse" name="verse">
+            <option value="">請選擇節</option>
+          </select>
+        </div>
+      </div>
+
+      <p id="formMessage" class="form-message">
+        請先選擇書卷與章才能顯示經文，節為可選。
+      </p>
+      <button id="showScriptureBtn" type="button">顯示經文</button>
+
+      <section id="scriptureResult" class="scripture-result" aria-live="polite"></section>
+    </div>
+
+    <script>
+      window.bibleIndex = <%- JSON.stringify(bibleIndex) %>;
+    </script>
+    <script src="/js/index.js"></script>
+  </body>
+</html>

@@ -1,0 +1,184 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: linear-gradient(180deg, #f8faff 0%, #eef3ff 100%);
+  color: #1e293b;
+}
+
+.container {
+  max-width: 800px;
+  margin: 40px auto;
+  padding: 28px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+h1 {
+  margin-top: 0;
+}
+
+.control-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin: 20px 0 10px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+label {
+  font-weight: 600;
+  color: #334155;
+}
+
+select,
+button,
+input {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+select:focus,
+button:focus {
+  outline: 2px solid #93c5fd;
+  outline-offset: 1px;
+}
+
+button {
+  margin-top: 8px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #1d4ed8;
+}
+
+.button-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.secondary-button {
+  display: inline-block;
+  text-decoration: none;
+  background: #f59e0b;
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.secondary-button:hover {
+  background: #d97706;
+}
+
+.form-message {
+  margin: 14px 0 0;
+  color: #0f766e;
+  font-size: 14px;
+}
+
+.form-message.error {
+  color: #b91c1c;
+}
+
+.scripture-result {
+  margin-top: 18px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 16px;
+}
+
+.scripture-result h2 {
+  margin: 0 0 12px;
+  font-size: 20px;
+}
+
+.verse-line {
+  margin: 0 0 10px;
+  line-height: 1.55;
+}
+
+.verse-number {
+  font-weight: 700;
+  color: #1d4ed8;
+  margin-right: 6px;
+}
+
+.memorize-verse-block {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: #f8fafc;
+}
+
+.answer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.answer-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.answer-item input.correct {
+  border-color: #16a34a;
+  background: #f0fdf4;
+}
+
+.answer-item input.incorrect {
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+
+.grading-result {
+  margin-top: 16px;
+}
+
+.grading-result h3 {
+  margin: 0 0 8px;
+}
+
+.grading-item {
+  margin: 6px 0;
+  font-size: 14px;
+}
+
+.grading-item.ok {
+  color: #166534;
+}
+
+.grading-item.bad {
+  color: #b91c1c;
+}
+
+.hint-text {
+  margin: 6px 0 0;
+  color: #475569;
+  font-size: 14px;
+}
+
+.hidden {
+  display: none;
+}
