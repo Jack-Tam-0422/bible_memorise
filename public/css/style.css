@@ -156,6 +156,15 @@ button:hover {
   margin-top: 16px;
 }
 
+#submitAnswersBtn {
+  background: #000000;
+  color: #ffffff;
+}
+
+#submitAnswersBtn:hover {
+  background: #111111;
+}
+
 .grading-result h3 {
   margin: 0 0 8px;
 }

@@ -94,6 +94,13 @@ function createVerseBlock(verseData) {
     return verseBlock;
   }
 
+  const maskedParts = verseData.blanks.length;
+  const maskedChars = verseData.blanks.reduce((total, blank) => total + blank.answer.length, 0);
+  const maskInfo = document.createElement('p');
+  maskInfo.className = 'hint-text';
+  maskInfo.textContent = `本節共遮罩 ${maskedParts} 處，合計 ${maskedChars} 字。`;
+  verseBlock.appendChild(maskInfo);
+
   const inputGrid = document.createElement('div');
   inputGrid.className = 'answer-grid';
 
