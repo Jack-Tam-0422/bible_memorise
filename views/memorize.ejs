@@ -9,65 +9,92 @@
   <body>
     <div class="container">
       <h1><%= title %></h1>
-      <div class="button-row">
-        <a class="secondary-button" href="/review">溫習聖經</a>
-      </div>
-      <p><%= message %></p>
+      <p class="page-intro"><%= message %></p>
 
-      <div class="control-grid">
-        <div class="field">
-          <label for="books">書卷</label>
-          <select id="books" name="books">
-            <option value="">請選擇書卷</option>
-            <% books.forEach((book) => { %>
-              <option value="<%= book %>" <%= book === defaultBook ? 'selected' : '' %>><%= book %></option>
-            <% }) %>
-          </select>
+      <section class="home-section" aria-labelledby="custom-select-heading">
+        <details id="customSelectPanel" class="dropdown-panel">
+          <summary id="custom-select-heading" class="dropdown-summary">
+            自選背誦章節
+          </summary>
+          <div class="dropdown-body">
+            <div class="control-grid">
+              <div class="field">
+                <label for="books">書卷</label>
+                <select id="books" name="books">
+                  <option value="">請選擇書卷</option>
+                  <% books.forEach((book) => { %>
+                    <option value="<%= book %>" <%= book === defaultBook ? 'selected' : '' %>><%= book %></option>
+                  <% }) %>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="chapter">章</label>
+                <select id="chapter" name="chapter">
+                  <option value="">請選擇章</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="verse">節（可選）</label>
+                <select id="verse" name="verse">
+                  <option value="">請選擇節</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field mode-field">
+              <span class="mode-label">練習模式</span>
+              <div class="mode-toggle" role="radiogroup" aria-label="練習模式">
+                <label class="mode-option">
+                  <input type="radio" name="quizMode" value="blank" <%= defaultMode === 'blank' ? 'checked' : '' %> />
+                  <span>填空格</span>
+                </label>
+                <label class="mode-option">
+                  <input type="radio" name="quizMode" value="choice" <%= defaultMode === 'choice' ? 'checked' : '' %> />
+                  <span>選擇題（3 選 1）</span>
+                </label>
+              </div>
+            </div>
+
+            <p id="memorizeMessage" class="form-message">
+              展開後可自選書卷、章與節。不選節時會練習整章。
+            </p>
+            <div class="button-row panel-actions">
+              <button id="startMemorizeBtn" type="button">開始背誦</button>
+              <button id="retryMaskBtn" type="button" class="hidden">重新出題</button>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <section class="home-section review-section">
+        <a class="secondary-button review-button" href="/review">溫習聖經</a>
+        <p class="hint-text">前往閱讀原文經文。</p>
+      </section>
+
+      <section class="home-section quiz-demo-section" aria-labelledby="demo-heading">
+        <h2 id="demo-heading" class="section-heading">示範題：創世記 1:1</h2>
+        <p class="hint-text">點選答案即可得知對錯，再按「下一節」繼續練習。</p>
+        <section id="quizProgress" class="quiz-progress hidden" aria-live="polite"></section>
+        <section id="memorizeResult" class="scripture-result" aria-live="polite"></section>
+        <section id="gradingResult" class="grading-result" aria-live="polite"></section>
+        <div class="button-row quiz-actions">
+          <button id="nextQuestionBtn" type="button" class="hidden">下一題</button>
+          <button id="nextVerseBtn" type="button" class="hidden">下一節</button>
         </div>
-
-        <div class="field">
-          <label for="chapter">章</label>
-          <select id="chapter" name="chapter">
-            <option value="">請選擇章</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label for="verse">節（可選）</label>
-          <select id="verse" name="verse">
-            <option value="">請選擇節</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="field mode-field">
-        <span class="mode-label">練習模式</span>
-        <div class="mode-toggle" role="radiogroup" aria-label="練習模式">
-          <label class="mode-option">
-            <input type="radio" name="quizMode" value="blank" <%= defaultMode === 'blank' ? 'checked' : '' %> />
-            <span>填空格</span>
-          </label>
-          <label class="mode-option">
-            <input type="radio" name="quizMode" value="choice" <%= defaultMode === 'choice' ? 'checked' : '' %> />
-            <span>選擇題（3 選 1）</span>
-          </label>
-        </div>
-      </div>
-
-      <p id="memorizeMessage" class="form-message">
-        請先選擇書卷與章，節可不選。不選節時會顯示整章練習。
-      </p>
-      <button id="startMemorizeBtn" type="button">開始背誦</button>
-      <button id="retryMaskBtn" type="button" class="hidden">同節重新出題</button>
-
-      <section id="quizProgress" class="quiz-progress hidden" aria-live="polite"></section>
-      <section id="memorizeResult" class="scripture-result" aria-live="polite"></section>
-      <section id="gradingResult" class="grading-result" aria-live="polite"></section>
+      </section>
     </div>
 
     <script>
       window.bibleIndex = <%- JSON.stringify(bibleIndex) %>;
-      window.memorizeDefaults = <%- JSON.stringify({ defaultBook, defaultChapter, defaultMode, autoStart }) %>;
+      window.memorizeDefaults = <%- JSON.stringify({
+        defaultBook,
+        defaultChapter,
+        defaultVerse,
+        defaultMode,
+        autoStart
+      }) %>;
     </script>
     <script src="/js/memorize.js"></script>
   </body>
