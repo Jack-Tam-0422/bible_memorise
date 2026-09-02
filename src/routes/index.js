@@ -104,7 +104,7 @@ function extractSubstrings(text, minLen, maxLen) {
     for (let i = 0; i <= chars.length - len; i += 1) {
       const segment = chars.slice(i, i + len).join('');
       if (Array.from(segment).every(isMaskableChar)) {
-        results.push(segment);
+        results.push({ text: segment, start: i, end: i + len - 1 });
       }
     }
   }
@@ -112,31 +112,289 @@ function extractSubstrings(text, minLen, maxLen) {
   return results;
 }
 
-function buildChoicesForBlank(correctAnswer, chapterVerses, excludeSet) {
-  const targetLen = Array.from(correctAnswer).length;
-  const lengthRanges = [
-    [Math.max(2, targetLen - 1), Math.min(4, targetLen + 1)],
-    [2, 4]
-  ];
+function countSharedChars(left, right) {
+  const remaining = Array.from(right);
+  let shared = 0;
 
-  for (const [minLen, maxLen] of lengthRanges) {
-    const candidates = new Set();
+  Array.from(left).forEach((char) => {
+    const index = remaining.indexOf(char);
+    if (index !== -1) {
+      shared += 1;
+      remaining.splice(index, 1);
+    }
+  });
 
-    chapterVerses.forEach((verseText) => {
-      extractSubstrings(verseText, minLen, maxLen).forEach((segment) => {
-        if (segment !== correctAnswer && !excludeSet.has(segment)) {
-          candidates.add(segment);
-        }
-      });
-    });
+  return shared;
+}
 
-    const pool = shuffle([...candidates]);
-    if (pool.length >= 2) {
-      return shuffle([correctAnswer, pool[0], pool[1]]);
+function editDistance(left, right) {
+  const a = Array.from(left);
+  const b = Array.from(right);
+  const rows = a.length + 1;
+  const cols = b.length + 1;
+  const matrix = Array.from({ length: rows }, () => Array(cols).fill(0));
+
+  for (let i = 0; i < rows; i += 1) {
+    matrix[i][0] = i;
+  }
+  for (let j = 0; j < cols; j += 1) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i < rows; i += 1) {
+    for (let j = 1; j < cols; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + cost
+      );
     }
   }
 
-  return null;
+  return matrix[a.length][b.length];
+}
+
+function overlapsRange(start, end, rangeStart, rangeEnd) {
+  return !(end < rangeStart || start > rangeEnd);
+}
+
+function distanceToBlank(start, end, blankStart, blankEnd) {
+  if (overlapsRange(start, end, blankStart, blankEnd)) {
+    return 0;
+  }
+
+  if (end < blankStart) {
+    return blankStart - end;
+  }
+
+  return start - blankEnd;
+}
+
+function getVerseCandidates(verseText, blankStart, blankEnd, targetLen) {
+  const minLen = Math.max(2, targetLen - 1);
+  const maxLen = Math.min(4, targetLen + 1);
+  const chars = Array.from(verseText);
+  const candidates = new Map();
+
+  const addCandidate = (text, start, end, source) => {
+    if (!text || text.length < 2) {
+      return;
+    }
+
+    if (!Array.from(text).every(isMaskableChar)) {
+      return;
+    }
+
+    const key = text;
+    if (!candidates.has(key)) {
+      candidates.set(key, { text, start, end, fromSameVerse: true, source });
+    }
+  };
+
+  for (let len = minLen; len <= maxLen; len += 1) {
+    if (blankStart - len >= 0) {
+      const start = blankStart - len;
+      addCandidate(chars.slice(start, blankStart).join(''), start, blankStart - 1, 'adjacent-left');
+    }
+
+    if (blankEnd + 1 + len <= chars.length) {
+      const start = blankEnd + 1;
+      addCandidate(chars.slice(start, start + len).join(''), start, start + len - 1, 'adjacent-right');
+    }
+  }
+
+  extractSubstrings(verseText, minLen, maxLen).forEach(({ text, start, end }) => {
+    if (!overlapsRange(start, end, blankStart, blankEnd)) {
+      addCandidate(text, start, end, 'same-verse');
+    }
+  });
+
+  return [...candidates.values()];
+}
+
+function getChapterCandidates(chapterVerses, verseText, blankStart, blankEnd, targetLen) {
+  const minLen = Math.max(2, targetLen - 1);
+  const maxLen = Math.min(4, targetLen + 1);
+  const candidates = new Map();
+
+  chapterVerses.forEach((text) => {
+    if (text === verseText) {
+      return;
+    }
+
+    extractSubstrings(text, minLen, maxLen).forEach(({ text: segment, start, end }) => {
+      if (!candidates.has(segment)) {
+        candidates.set(segment, {
+          text: segment,
+          start,
+          end,
+          fromSameVerse: false,
+          source: 'chapter'
+        });
+      }
+    });
+  });
+
+  return [...candidates.values()];
+}
+
+function generateNearMisses(correctAnswer, verseText) {
+  const correctChars = Array.from(correctAnswer);
+  const verseChars = [...new Set(Array.from(verseText).filter(isMaskableChar))];
+  const nearMisses = new Set();
+
+  correctChars.forEach((char, index) => {
+    verseChars.forEach((replacement) => {
+      if (replacement === char) {
+        return;
+      }
+
+      const variantChars = [...correctChars];
+      variantChars[index] = replacement;
+      const variant = variantChars.join('');
+      if (variant !== correctAnswer && variant.length >= 2) {
+        nearMisses.add(variant);
+      }
+    });
+  });
+
+  return [...nearMisses].map((text) => ({
+    text,
+    start: -1,
+    end: -1,
+    fromSameVerse: true,
+    source: 'near-miss'
+  }));
+}
+
+function isWeakRepeatedPattern(text) {
+  const chars = Array.from(text);
+  return chars.length > 1 && chars.every((char) => char === chars[0]);
+}
+
+function scoreCandidate(candidate, correctAnswer, blankStart, blankEnd) {
+  const candidateLen = Array.from(candidate.text).length;
+  const correctLen = Array.from(correctAnswer).length;
+  let score = 0;
+
+  if (candidateLen === correctLen) {
+    score += 30;
+  } else {
+    score -= Math.abs(candidateLen - correctLen) * 12;
+  }
+
+  const shared = countSharedChars(candidate.text, correctAnswer);
+  score += shared * 18;
+
+  const distance = editDistance(candidate.text, correctAnswer);
+  if (distance === 1) {
+    score += 28;
+  } else if (distance === 2) {
+    score += 16;
+  } else if (distance > 3) {
+    score -= 12;
+  }
+
+  if (candidate.text[0] === correctAnswer[0]) {
+    score += 10;
+  }
+
+  const candidateLast = candidate.text[candidate.text.length - 1];
+  const correctLast = correctAnswer[correctAnswer.length - 1];
+  if (candidateLast === correctLast) {
+    score += 10;
+  }
+
+  if (candidate.fromSameVerse) {
+    score += 35;
+  }
+
+  if (candidate.source === 'adjacent-left' || candidate.source === 'adjacent-right') {
+    score += 25;
+  } else if (candidate.source === 'same-verse') {
+    score += 12;
+  } else if (candidate.source === 'near-miss') {
+    score += 20;
+  }
+
+  if (candidate.start >= 0) {
+    const proximity = distanceToBlank(candidate.start, candidate.end, blankStart, blankEnd);
+    score += Math.max(0, 18 - proximity * 4);
+  }
+
+  if (isWeakRepeatedPattern(candidate.text)) {
+    score -= 35;
+  }
+
+  return score;
+}
+
+function pickTopDistractors(scoredCandidates, correctAnswer, count = 2) {
+  const sorted = scoredCandidates
+    .filter((candidate) => candidate.text !== correctAnswer)
+    .sort((left, right) => right.score - left.score || left.text.localeCompare(right.text, 'zh-Hant'));
+
+  const picked = [];
+
+  sorted.forEach((candidate) => {
+    if (picked.length >= count) {
+      return;
+    }
+
+    if (picked.includes(candidate.text)) {
+      return;
+    }
+
+    const tooSimilar = picked.some(
+      (existing) => editDistance(existing, candidate.text) <= 1 && existing !== candidate.text
+    );
+    if (tooSimilar) {
+      return;
+    }
+
+    picked.push(candidate.text);
+  });
+
+  return picked;
+}
+
+function buildChoicesForBlank(correctAnswer, verseText, blankStart, blankEnd, chapterVerses, excludeSet) {
+  const targetLen = Array.from(correctAnswer).length;
+  const verseCandidates = getVerseCandidates(verseText, blankStart, blankEnd, targetLen);
+  const chapterCandidates = getChapterCandidates(chapterVerses, verseText, blankStart, blankEnd, targetLen);
+  const nearMisses = generateNearMisses(correctAnswer, verseText);
+
+  const candidateMap = new Map();
+  [...verseCandidates, ...chapterCandidates, ...nearMisses].forEach((candidate) => {
+    if (excludeSet.has(candidate.text)) {
+      return;
+    }
+
+    const existing = candidateMap.get(candidate.text);
+    if (!existing || scoreCandidate(candidate, correctAnswer, blankStart, blankEnd) > existing.score) {
+      candidateMap.set(candidate.text, {
+        ...candidate,
+        score: scoreCandidate(candidate, correctAnswer, blankStart, blankEnd)
+      });
+    }
+  });
+
+  let distractors = pickTopDistractors([...candidateMap.values()], correctAnswer, 2);
+
+  if (distractors.length < 2) {
+    const relaxedCandidates = [...candidateMap.values()].map((candidate) => ({
+      ...candidate,
+      score: candidate.score + (candidate.fromSameVerse ? 0 : -20)
+    }));
+    distractors = pickTopDistractors(relaxedCandidates, correctAnswer, 2);
+  }
+
+  if (distractors.length < 2) {
+    return null;
+  }
+
+  return shuffle([correctAnswer, distractors[0], distractors[1]]);
 }
 
 function attachChoicesToVerses(verses, chapterVerses) {
@@ -147,17 +405,30 @@ function attachChoicesToVerses(verses, chapterVerses) {
     });
   });
 
-  return verses.map((verse) => ({
-    ...verse,
-    blanks: verse.blanks.map((blank) => {
-      const choices = buildChoicesForBlank(blank.answer, chapterVerses, excludeSet);
-      if (!choices) {
-        return blank;
-      }
+  return verses.map((verse) => {
+    const verseText = chapterVerses[verse.number - 1] || '';
 
-      return { ...blank, choices };
-    })
-  }));
+    return {
+      ...verse,
+      blanks: verse.blanks.map((blank) => {
+        const choices = buildChoicesForBlank(
+          blank.answer,
+          verseText,
+          blank.start,
+          blank.end,
+          chapterVerses,
+          excludeSet
+        );
+
+        const { start, end, ...publicBlank } = blank;
+        if (!choices) {
+          return publicBlank;
+        }
+
+        return { ...publicBlank, choices };
+      })
+    };
+  });
 }
 
 function buildMaskedVerse(verseText) {
@@ -235,7 +506,9 @@ function buildMaskedVerse(verseText) {
   const orderedSegments = segments.sort((a, b) => a.start - b.start);
   const blanks = orderedSegments.map((segment, index) => ({
     id: index + 1,
-    answer: chars.slice(segment.start, segment.end + 1).join('')
+    answer: chars.slice(segment.start, segment.end + 1).join(''),
+    start: segment.start,
+    end: segment.end
   }));
 
   let cursor = 0;
