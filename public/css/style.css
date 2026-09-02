@@ -206,13 +206,38 @@ button:hover {
   border: 1px solid var(--warm-amber);
 }
 
-#submitAnswersBtn {
-  background: linear-gradient(135deg, var(--green-deep) 0%, var(--green-primary) 100%);
-  color: #ffffff;
+.quiz-progress {
+  margin-top: 16px;
+  font-weight: 600;
+  color: var(--green-primary);
+  font-size: 15px;
 }
 
-#submitAnswersBtn:hover {
-  background: linear-gradient(135deg, #0d2818 0%, var(--green-deep) 100%);
+.question-block {
+  margin-bottom: 0;
+}
+
+.answer-area {
+  margin-top: 12px;
+}
+
+.question-feedback {
+  margin: 12px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.question-feedback.ok {
+  color: var(--green-primary);
+}
+
+.question-feedback.bad {
+  color: #b91c1c;
+}
+
+.choice-button:disabled {
+  cursor: default;
+  opacity: 1;
 }
 
 .grading-result h3 {

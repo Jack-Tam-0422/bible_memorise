@@ -10,7 +10,7 @@
     <div class="container">
       <h1><%= title %></h1>
       <div class="button-row">
-        <a class="secondary-button" href="/">返回溫習聖經</a>
+        <a class="secondary-button" href="/review">溫習聖經</a>
       </div>
       <p><%= message %></p>
 
@@ -20,7 +20,7 @@
           <select id="books" name="books">
             <option value="">請選擇書卷</option>
             <% books.forEach((book) => { %>
-              <option value="<%= book %>"><%= book %></option>
+              <option value="<%= book %>" <%= book === defaultBook ? 'selected' : '' %>><%= book %></option>
             <% }) %>
           </select>
         </div>
@@ -44,11 +44,11 @@
         <span class="mode-label">練習模式</span>
         <div class="mode-toggle" role="radiogroup" aria-label="練習模式">
           <label class="mode-option">
-            <input type="radio" name="quizMode" value="blank" checked />
+            <input type="radio" name="quizMode" value="blank" <%= defaultMode === 'blank' ? 'checked' : '' %> />
             <span>填空格</span>
           </label>
           <label class="mode-option">
-            <input type="radio" name="quizMode" value="choice" />
+            <input type="radio" name="quizMode" value="choice" <%= defaultMode === 'choice' ? 'checked' : '' %> />
             <span>選擇題（3 選 1）</span>
           </label>
         </div>
@@ -60,13 +60,14 @@
       <button id="startMemorizeBtn" type="button">開始背誦</button>
       <button id="retryMaskBtn" type="button" class="hidden">同節重新出題</button>
 
+      <section id="quizProgress" class="quiz-progress hidden" aria-live="polite"></section>
       <section id="memorizeResult" class="scripture-result" aria-live="polite"></section>
-      <button id="submitAnswersBtn" type="button" class="hidden">提交答案</button>
       <section id="gradingResult" class="grading-result" aria-live="polite"></section>
     </div>
 
     <script>
       window.bibleIndex = <%- JSON.stringify(bibleIndex) %>;
+      window.memorizeDefaults = <%- JSON.stringify({ defaultBook, defaultChapter, defaultMode, autoStart }) %>;
     </script>
     <script src="/js/memorize.js"></script>
   </body>
