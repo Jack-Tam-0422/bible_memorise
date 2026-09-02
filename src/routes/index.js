@@ -275,19 +275,36 @@ function getChapterVerses(chineseBook, chapterNumber) {
   return bibleData[englishBook]?.content?.[String(chapterNumber)] || null;
 }
 
-router.get('/', (req, res) => {
-  res.render('index', {
-    title: '溫習聖經',
-    message: '請選擇書卷、章與節以顯示經文。',
-    books,
-    bibleIndex
-  });
-});
+const memorizeDefaults = {
+  defaultBook: '創世記',
+  defaultChapter: 1,
+  defaultMode: 'choice',
+  autoStart: true
+};
 
-router.get('/memorize', (req, res) => {
+function renderMemorizePage(res, overrides = {}) {
   res.render('memorize', {
     title: '聖經背誦',
     message: '請選擇書卷、章與節（可選），開始背誦練習。',
+    books,
+    bibleIndex,
+    ...memorizeDefaults,
+    ...overrides
+  });
+}
+
+router.get('/', (req, res) => {
+  renderMemorizePage(res);
+});
+
+router.get('/memorize', (req, res) => {
+  res.redirect('/');
+});
+
+router.get('/review', (req, res) => {
+  res.render('index', {
+    title: '溫習聖經',
+    message: '請選擇書卷、章與節以顯示經文。',
     books,
     bibleIndex
   });
