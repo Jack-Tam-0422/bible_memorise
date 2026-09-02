@@ -239,6 +239,94 @@ button:hover {
   font-size: 14px;
 }
 
+.mode-field {
+  margin-top: 16px;
+}
+
+.mode-label {
+  font-weight: 600;
+  color: var(--green-primary);
+}
+
+.mode-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.mode-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--green-mist);
+  border-radius: 8px;
+  background: #ffffff;
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--warm-text);
+}
+
+.mode-option:has(input:checked) {
+  border-color: var(--green-primary);
+  background: var(--green-light);
+  box-shadow: 0 0 0 2px rgba(45, 106, 79, 0.15);
+}
+
+.mode-option input {
+  margin: 0;
+  accent-color: var(--green-primary);
+}
+
+.choice-item .choice-label {
+  margin: 0;
+  font-weight: 600;
+  color: var(--green-primary);
+}
+
+.choice-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.choice-button {
+  margin-top: 0;
+  min-height: 44px;
+  min-width: 72px;
+  padding: 10px 16px;
+  background: #ffffff;
+  color: var(--warm-text);
+  border: 1px solid var(--green-mist);
+  box-shadow: none;
+  font-weight: 500;
+}
+
+.choice-button:hover {
+  background: var(--green-light);
+  color: var(--green-deep);
+  box-shadow: none;
+}
+
+.choice-button.selected {
+  border-color: var(--green-primary);
+  background: var(--green-light);
+  color: var(--green-deep);
+  box-shadow: 0 0 0 2px rgba(45, 106, 79, 0.2);
+}
+
+.choice-button.correct {
+  border-color: var(--green-primary);
+  background: var(--green-light);
+  color: var(--green-deep);
+}
+
+.choice-button.incorrect {
+  border-color: #dc2626;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
 .container a:not(.secondary-button) {
   color: var(--green-primary);
   font-weight: 600;

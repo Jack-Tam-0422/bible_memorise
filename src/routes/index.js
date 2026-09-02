@@ -96,6 +96,70 @@ function isMaskableChar(char) {
   return /[\p{L}\p{N}]/u.test(char);
 }
 
+function extractSubstrings(text, minLen, maxLen) {
+  const chars = Array.from(text);
+  const results = [];
+
+  for (let len = minLen; len <= maxLen; len += 1) {
+    for (let i = 0; i <= chars.length - len; i += 1) {
+      const segment = chars.slice(i, i + len).join('');
+      if (Array.from(segment).every(isMaskableChar)) {
+        results.push(segment);
+      }
+    }
+  }
+
+  return results;
+}
+
+function buildChoicesForBlank(correctAnswer, chapterVerses, excludeSet) {
+  const targetLen = Array.from(correctAnswer).length;
+  const lengthRanges = [
+    [Math.max(2, targetLen - 1), Math.min(4, targetLen + 1)],
+    [2, 4]
+  ];
+
+  for (const [minLen, maxLen] of lengthRanges) {
+    const candidates = new Set();
+
+    chapterVerses.forEach((verseText) => {
+      extractSubstrings(verseText, minLen, maxLen).forEach((segment) => {
+        if (segment !== correctAnswer && !excludeSet.has(segment)) {
+          candidates.add(segment);
+        }
+      });
+    });
+
+    const pool = shuffle([...candidates]);
+    if (pool.length >= 2) {
+      return shuffle([correctAnswer, pool[0], pool[1]]);
+    }
+  }
+
+  return null;
+}
+
+function attachChoicesToVerses(verses, chapterVerses) {
+  const excludeSet = new Set();
+  verses.forEach((verse) => {
+    verse.blanks.forEach((blank) => {
+      excludeSet.add(blank.answer);
+    });
+  });
+
+  return verses.map((verse) => ({
+    ...verse,
+    blanks: verse.blanks.map((blank) => {
+      const choices = buildChoicesForBlank(blank.answer, chapterVerses, excludeSet);
+      if (!choices) {
+        return blank;
+      }
+
+      return { ...blank, choices };
+    })
+  }));
+}
+
 function buildMaskedVerse(verseText) {
   const chars = Array.from(verseText);
   const maskableIndices = chars
@@ -267,10 +331,14 @@ router.get('/api/scripture', (req, res) => {
 });
 
 router.get('/api/memorize', (req, res) => {
-  const { book, chapter, verse } = req.query;
+  const { book, chapter, verse, mode = 'blank' } = req.query;
 
   if (!book || !chapter) {
     return res.status(400).json({ error: '請先選擇書卷與章。' });
+  }
+
+  if (mode !== 'blank' && mode !== 'choice') {
+    return res.status(400).json({ error: '練習模式不正確。' });
   }
 
   const chapterNumber = Number(chapter);
@@ -290,20 +358,33 @@ router.get('/api/memorize', (req, res) => {
     }
 
     const masked = buildMaskedVerse(chapterVerses[verseNumber - 1]);
+    let verses = [{ number: verseNumber, ...masked }];
+    if (mode === 'choice') {
+      verses = attachChoicesToVerses(verses, chapterVerses);
+    }
+
     return res.json({
+      mode,
       book,
       chapter: chapterNumber,
-      verses: [{ number: verseNumber, ...masked }]
+      verses
     });
   }
 
+  let verses = chapterVerses.map((text, index) => ({
+    number: index + 1,
+    ...buildMaskedVerse(text)
+  }));
+
+  if (mode === 'choice') {
+    verses = attachChoicesToVerses(verses, chapterVerses);
+  }
+
   return res.json({
+    mode,
     book,
     chapter: chapterNumber,
-    verses: chapterVerses.map((text, index) => ({
-      number: index + 1,
-      ...buildMaskedVerse(text)
-    }))
+    verses
   });
 });
 
