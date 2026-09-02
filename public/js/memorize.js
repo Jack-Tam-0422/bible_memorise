@@ -3,7 +3,7 @@ const chapterSelect = document.getElementById('chapter');
 const verseSelect = document.getElementById('verse');
 const startMemorizeBtn = document.getElementById('startMemorizeBtn');
 const retryMaskBtn = document.getElementById('retryMaskBtn');
-const nextQuestionBtn = document.getElementById('nextQuestionBtn');
+const submitAnswersBtn = document.getElementById('submitAnswersBtn');
 const nextVerseBtn = document.getElementById('nextVerseBtn');
 const quizProgress = document.getElementById('quizProgress');
 const memorizeResult = document.getElementById('memorizeResult');
@@ -13,12 +13,13 @@ const demoHeading = document.getElementById('demo-heading');
 const bibleIndex = window.bibleIndex || {};
 const memorizeDefaults = window.memorizeDefaults || {};
 
-let quizQuestions = [];
-let currentQuestionIndex = 0;
+let quizVerses = [];
+let currentVerseIndex = 0;
 let correctCount = 0;
+let totalBlankCount = 0;
 let currentQuizMode = 'choice';
 let currentQuizMeta = null;
-let isAnswering = false;
+let isGraded = false;
 
 function getSelectedQuizMode() {
   const selected = document.querySelector('input[name="quizMode"]:checked');
@@ -47,8 +48,8 @@ function setMessage(text, isError) {
   memorizeMessage.classList.toggle('error', isError);
 }
 
-function hideNavButtons() {
-  nextQuestionBtn.classList.add('hidden');
+function hideActionButtons() {
+  submitAnswersBtn.classList.add('hidden');
   nextVerseBtn.classList.add('hidden');
 }
 
@@ -58,12 +59,13 @@ function clearQuizResults() {
   quizProgress.classList.add('hidden');
   quizProgress.textContent = '';
   retryMaskBtn.classList.add('hidden');
-  hideNavButtons();
-  quizQuestions = [];
-  currentQuestionIndex = 0;
+  hideActionButtons();
+  quizVerses = [];
+  currentVerseIndex = 0;
   correctCount = 0;
+  totalBlankCount = 0;
   currentQuizMeta = null;
-  isAnswering = false;
+  isGraded = false;
 }
 
 function updateDemoHeading(book, chapter, verse) {
@@ -123,116 +125,43 @@ function updateVerses(options = {}) {
   populateSelect(verseSelect, verseNumbers);
 }
 
-function buildQuizQuestions(data) {
-  const questions = [];
-
-  data.verses.forEach((verseData) => {
-    verseData.blanks.forEach((blank) => {
-      questions.push({
-        verse: verseData.number,
-        blank: blank.id,
+function buildQuizVerses(data) {
+  return data.verses
+    .filter((verseData) => Array.isArray(verseData.blanks) && verseData.blanks.length > 0)
+    .map((verseData) => ({
+      verse: verseData.number,
+      maskedText: verseData.maskedText,
+      blanks: verseData.blanks.map((blank) => ({
+        id: blank.id,
         answer: blank.answer,
-        maskedText: verseData.maskedText,
         choices: Array.isArray(blank.choices) ? blank.choices : null
-      });
-    });
-  });
+      }))
+    }));
+}
 
-  return questions;
+function countAllBlanks(verses) {
+  return verses.reduce((total, verseData) => total + verseData.blanks.length, 0);
 }
 
 function updateProgress() {
-  if (quizQuestions.length === 0) {
+  if (quizVerses.length === 0) {
     quizProgress.classList.add('hidden');
     quizProgress.textContent = '';
     return;
   }
 
+  const current = quizVerses[currentVerseIndex];
   quizProgress.classList.remove('hidden');
-  quizProgress.textContent = `第 ${currentQuestionIndex + 1} / ${quizQuestions.length} 題`;
-}
-
-function createChoiceButtons(question) {
-  const group = document.createElement('div');
-  group.className = 'choice-group';
-  group.dataset.correctAnswer = question.answer;
-  group.setAttribute('role', 'group');
-  group.setAttribute('aria-label', `第 ${question.verse} 節空格 ${question.blank}`);
-
-  const choices = question.choices && question.choices.length === 3
-    ? question.choices
-    : [question.answer];
-
-  choices.forEach((choice) => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'choice-button';
-    button.textContent = choice;
-    button.dataset.answer = choice;
-
-    button.addEventListener('click', () => {
-      if (isAnswering) {
-        return;
-      }
-      handleChoiceAnswer(question, choice, group);
-    });
-
-    group.appendChild(button);
-  });
-
-  return group;
-}
-
-function createBlankInput(question) {
-  const item = document.createElement('div');
-  item.className = 'answer-item';
-
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.id = `answer-v${question.verse}-b${question.blank}`;
-  input.placeholder = '請輸入答案';
-
-  const submitBtn = document.createElement('button');
-  submitBtn.type = 'button';
-  submitBtn.textContent = '確認';
-  submitBtn.addEventListener('click', () => {
-    if (isAnswering) {
-      return;
-    }
-    handleBlankAnswer(question, input.value.trim(), item);
-  });
-
-  input.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter' && !isAnswering) {
-      handleBlankAnswer(question, input.value.trim(), item);
-    }
-  });
-
-  item.appendChild(input);
-  item.appendChild(submitBtn);
-  return item;
-}
-
-function showQuestionFeedback(container, isCorrect, expectedAnswer) {
-  const feedback = document.createElement('p');
-  feedback.className = `question-feedback ${isCorrect ? 'ok' : 'bad'}`;
-
-  if (isCorrect) {
-    feedback.textContent = '答對了！';
-  } else {
-    feedback.textContent = `答錯了，正確答案：${expectedAnswer}`;
-  }
-
-  container.appendChild(feedback);
-}
-
-function hasMoreQuestions() {
-  return currentQuestionIndex + 1 < quizQuestions.length;
+  quizProgress.textContent = `第 ${currentVerseIndex + 1} / ${quizVerses.length} 節（本節 ${current.blanks.length} 題）`;
 }
 
 function canGoNextVerse() {
   if (!currentQuizMeta) {
     return false;
+  }
+
+  if (currentVerseIndex + 1 < quizVerses.length) {
+    return true;
   }
 
   const book = booksSelect.value || currentQuizMeta.book;
@@ -242,7 +171,9 @@ function canGoNextVerse() {
     return false;
   }
 
-  const currentVerse = Number(verseSelect.value || currentQuizMeta.verse || 0);
+  const currentVerse = Number(
+    verseSelect.value || currentQuizMeta.verse || quizVerses[currentVerseIndex]?.verse || 0
+  );
   if (!Number.isInteger(currentVerse) || currentVerse <= 0) {
     return verseCount > 1;
   }
@@ -250,68 +181,135 @@ function canGoNextVerse() {
   return currentVerse < verseCount;
 }
 
-function showPostAnswerNav() {
-  hideNavButtons();
+function createChoiceGroup(blank) {
+  const item = document.createElement('div');
+  item.className = 'answer-item choice-item';
+  item.dataset.blankId = String(blank.id);
 
-  if (hasMoreQuestions()) {
-    nextQuestionBtn.classList.remove('hidden');
-  }
+  const label = document.createElement('p');
+  label.className = 'choice-label';
+  label.textContent = `空格 ${blank.id}`;
+  item.appendChild(label);
 
-  if (canGoNextVerse()) {
-    nextVerseBtn.classList.remove('hidden');
-  }
+  const group = document.createElement('div');
+  group.className = 'choice-group';
+  group.dataset.correctAnswer = blank.answer;
+  group.dataset.blankId = String(blank.id);
+  group.setAttribute('role', 'group');
+  group.setAttribute('aria-label', `空格 ${blank.id}`);
+
+  const choices = blank.choices && blank.choices.length === 3
+    ? blank.choices
+    : [blank.answer];
+
+  choices.forEach((choice) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'choice-button';
+    button.textContent = choice;
+    button.dataset.answer = choice;
+    button.setAttribute('aria-pressed', 'false');
+
+    button.addEventListener('click', () => {
+      if (isGraded) {
+        return;
+      }
+
+      group.querySelectorAll('.choice-button').forEach((choiceButton) => {
+        choiceButton.classList.remove('selected');
+        choiceButton.setAttribute('aria-pressed', 'false');
+      });
+      button.classList.add('selected');
+      button.setAttribute('aria-pressed', 'true');
+      refreshSubmitAvailability();
+    });
+
+    group.appendChild(button);
+  });
+
+  item.appendChild(group);
+  return item;
 }
 
-function showFinalSummary() {
-  memorizeResult.innerHTML = '';
-  gradingResult.innerHTML = '';
-  hideNavButtons();
+function createBlankInput(blank) {
+  const item = document.createElement('div');
+  item.className = 'answer-item';
+  item.dataset.blankId = String(blank.id);
 
-  const summary = document.createElement('h3');
-  summary.textContent = `作答完成：${correctCount} / ${quizQuestions.length} 正確`;
-  gradingResult.appendChild(summary);
+  const label = document.createElement('label');
+  const inputId = `answer-b${blank.id}`;
+  label.setAttribute('for', inputId);
+  label.textContent = `空格 ${blank.id}`;
 
-  if (correctCount === quizQuestions.length) {
-    setMessage('太好了，全部答對！可按「下一節」繼續。', false);
-  } else {
-    setMessage('已完成本節練習，可重新出題或按「下一節」。', false);
-  }
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.id = inputId;
+  input.dataset.answer = blank.answer;
+  input.dataset.blank = String(blank.id);
+  input.placeholder = '請輸入答案';
+  input.addEventListener('input', () => {
+    if (!isGraded) {
+      refreshSubmitAvailability();
+    }
+  });
 
-  quizProgress.classList.add('hidden');
-  isAnswering = false;
-
-  if (canGoNextVerse()) {
-    nextVerseBtn.classList.remove('hidden');
-  }
+  item.appendChild(label);
+  item.appendChild(input);
+  return item;
 }
 
-function renderCurrentQuestion() {
+function allBlanksAnswered() {
+  const current = quizVerses[currentVerseIndex];
+  if (!current) {
+    return false;
+  }
+
+  return current.blanks.every((blank) => {
+    if (currentQuizMode === 'choice') {
+      const selected = memorizeResult.querySelector(
+        `.choice-group[data-blank-id="${blank.id}"] .choice-button.selected`
+      );
+      return Boolean(selected);
+    }
+
+    const input = memorizeResult.querySelector(`input[data-blank="${blank.id}"]`);
+    return Boolean(input && input.value.trim());
+  });
+}
+
+function refreshSubmitAvailability() {
+  if (isGraded || quizVerses.length === 0) {
+    submitAnswersBtn.classList.add('hidden');
+    return;
+  }
+
+  submitAnswersBtn.classList.remove('hidden');
+  submitAnswersBtn.disabled = !allBlanksAnswered();
+}
+
+function renderCurrentVerse() {
   memorizeResult.innerHTML = '';
   gradingResult.innerHTML = '';
-  hideNavButtons();
-  isAnswering = false;
+  hideActionButtons();
+  isGraded = false;
 
-  if (!currentQuizMeta || quizQuestions.length === 0) {
+  if (!currentQuizMeta || quizVerses.length === 0) {
     updateProgress();
     setMessage('此範圍沒有可練習的題目，請更換章節或重新出題。', true);
     return;
   }
 
-  if (currentQuestionIndex >= quizQuestions.length) {
+  if (currentVerseIndex >= quizVerses.length) {
     showFinalSummary();
     return;
   }
 
-  const question = quizQuestions[currentQuestionIndex];
+  const verseData = quizVerses[currentVerseIndex];
   updateProgress();
-  updateDemoHeading(
-    currentQuizMeta.book,
-    currentQuizMeta.chapter,
-    currentQuizMeta.verse || question.verse
-  );
+  updateDemoHeading(currentQuizMeta.book, currentQuizMeta.chapter, verseData.verse);
 
   const header = document.createElement('h2');
-  header.textContent = `${currentQuizMeta.book} ${currentQuizMeta.chapter}:${question.verse}`;
+  header.textContent = `${currentQuizMeta.book} ${currentQuizMeta.chapter}:${verseData.verse}`;
   memorizeResult.appendChild(header);
 
   const verseBlock = document.createElement('article');
@@ -319,28 +317,31 @@ function renderCurrentQuestion() {
 
   const line = document.createElement('p');
   line.className = 'verse-line';
-  line.innerHTML = `<span class="verse-number">${question.verse}</span> ${question.maskedText}`;
+  line.innerHTML = `<span class="verse-number">${verseData.verse}</span> ${verseData.maskedText}`;
   verseBlock.appendChild(line);
 
   const prompt = document.createElement('p');
   prompt.className = 'hint-text';
   prompt.textContent =
     currentQuizMode === 'choice'
-      ? `空格 ${question.blank}：請點選正確答案`
-      : `空格 ${question.blank}：請填入正確答案`;
+      ? `本節共 ${verseData.blanks.length} 題選擇題，請全部作答後再提交。`
+      : `本節共 ${verseData.blanks.length} 個空格，請全部填寫後再提交。`;
   verseBlock.appendChild(prompt);
 
   const answerArea = document.createElement('div');
-  answerArea.className = 'answer-area';
+  answerArea.className = 'answer-area answer-grid';
 
-  if (currentQuizMode === 'choice') {
-    answerArea.appendChild(createChoiceButtons(question));
-  } else {
-    answerArea.appendChild(createBlankInput(question));
-  }
+  verseData.blanks.forEach((blank) => {
+    if (currentQuizMode === 'choice') {
+      answerArea.appendChild(createChoiceGroup(blank));
+    } else {
+      answerArea.appendChild(createBlankInput(blank));
+    }
+  });
 
   verseBlock.appendChild(answerArea);
   memorizeResult.appendChild(verseBlock);
+  refreshSubmitAvailability();
 }
 
 function markChoiceGroup(group, selectedAnswer, expectedAnswer) {
@@ -353,47 +354,95 @@ function markChoiceGroup(group, selectedAnswer, expectedAnswer) {
   });
 }
 
-function handleChoiceAnswer(question, selectedAnswer, group) {
-  isAnswering = true;
-  const isCorrect = selectedAnswer === question.answer;
-
-  markChoiceGroup(group, selectedAnswer, question.answer);
-
-  if (isCorrect) {
-    correctCount += 1;
-  }
-
-  showQuestionFeedback(group.parentElement, isCorrect, question.answer);
-  showPostAnswerNav();
-}
-
-function handleBlankAnswer(question, userAnswer, item) {
-  if (!userAnswer) {
-    setMessage('請先輸入答案。', true);
+function submitCurrentVerseAnswers() {
+  const verseData = quizVerses[currentVerseIndex];
+  if (!verseData || isGraded) {
     return;
   }
 
-  isAnswering = true;
-  const isCorrect = userAnswer === question.answer;
-  const input = item.querySelector('input');
-  const submitBtn = item.querySelector('button');
-
-  if (input) {
-    input.classList.toggle('correct', isCorrect);
-    input.classList.toggle('incorrect', !isCorrect);
-    input.disabled = true;
+  if (!allBlanksAnswered()) {
+    setMessage('請先完成本節所有空格再提交。', true);
+    return;
   }
 
-  if (submitBtn) {
-    submitBtn.disabled = true;
+  isGraded = true;
+  submitAnswersBtn.classList.add('hidden');
+  gradingResult.innerHTML = '';
+
+  let verseCorrect = 0;
+  const details = document.createElement('div');
+  details.className = 'grading-details';
+
+  verseData.blanks.forEach((blank) => {
+    let userAnswer = '';
+    let isCorrect = false;
+
+    if (currentQuizMode === 'choice') {
+      const group = memorizeResult.querySelector(`.choice-group[data-blank-id="${blank.id}"]`);
+      const selected = group?.querySelector('.choice-button.selected');
+      userAnswer = selected?.dataset.answer || '';
+      isCorrect = userAnswer === blank.answer;
+      if (group) {
+        markChoiceGroup(group, userAnswer, blank.answer);
+      }
+    } else {
+      const input = memorizeResult.querySelector(`input[data-blank="${blank.id}"]`);
+      userAnswer = input?.value.trim() || '';
+      isCorrect = userAnswer === blank.answer;
+      if (input) {
+        input.classList.toggle('correct', isCorrect);
+        input.classList.toggle('incorrect', !isCorrect);
+        input.disabled = true;
+      }
+    }
+
+    if (isCorrect) {
+      verseCorrect += 1;
+      correctCount += 1;
+    }
+
+    const item = document.createElement('p');
+    item.className = `grading-item ${isCorrect ? 'ok' : 'bad'}`;
+    item.textContent = isCorrect
+      ? `空格 ${blank.id}：正確`
+      : `空格 ${blank.id}：錯誤（正確：${blank.answer}）`;
+    details.appendChild(item);
+  });
+
+  const summary = document.createElement('h3');
+  summary.textContent = `本節結果：${verseCorrect} / ${verseData.blanks.length} 正確`;
+  gradingResult.appendChild(summary);
+  gradingResult.appendChild(details);
+
+  setMessage(
+    verseCorrect === verseData.blanks.length
+      ? '本節全部答對！可按「下一節」繼續。'
+      : '已完成本節批改，請參考正解後按「下一節」。',
+    verseCorrect !== verseData.blanks.length
+  );
+
+  if (canGoNextVerse() || currentVerseIndex + 1 < quizVerses.length) {
+    nextVerseBtn.classList.remove('hidden');
+  }
+}
+
+function showFinalSummary() {
+  memorizeResult.innerHTML = '';
+  gradingResult.innerHTML = '';
+  hideActionButtons();
+
+  const summary = document.createElement('h3');
+  summary.textContent = `作答完成：${correctCount} / ${totalBlankCount} 正確`;
+  gradingResult.appendChild(summary);
+
+  if (correctCount === totalBlankCount && totalBlankCount > 0) {
+    setMessage('太好了，全部答對！', false);
+  } else {
+    setMessage('已完成本次練習，可重新出題或更換章節。', false);
   }
 
-  if (isCorrect) {
-    correctCount += 1;
-  }
-
-  showQuestionFeedback(item, isCorrect, question.answer);
-  showPostAnswerNav();
+  quizProgress.classList.add('hidden');
+  isGraded = false;
 }
 
 function renderMemorizeResult(data) {
@@ -404,27 +453,22 @@ function renderMemorizeResult(data) {
     chapter: data.chapter,
     verse: data.verses.length === 1 ? data.verses[0].number : null
   };
-  quizQuestions = buildQuizQuestions(data);
+  quizVerses = buildQuizVerses(data);
+  totalBlankCount = countAllBlanks(quizVerses);
   retryMaskBtn.classList.remove('hidden');
 
-  updateDemoHeading(
-    currentQuizMeta.book,
-    currentQuizMeta.chapter,
-    currentQuizMeta.verse
-  );
-
-  if (quizQuestions.length === 0) {
+  if (quizVerses.length === 0) {
     setMessage('此範圍沒有可練習的題目，請更換章節或重新出題。', true);
     return;
   }
 
-  currentQuestionIndex = 0;
+  currentVerseIndex = 0;
   correctCount = 0;
-  renderCurrentQuestion();
+  renderCurrentVerse();
   setMessage(
     currentQuizMode === 'choice'
-      ? '請點選答案；答完後可按「下一題」或「下一節」。'
-      : '請填寫答案；答完後可按「下一題」或「下一節」。',
+      ? '請答完本節所有選擇題後再提交，批改後可按「下一節」。'
+      : '請填完本節所有空格後再提交，批改後可按「下一節」。',
     false
   );
 }
@@ -462,17 +506,19 @@ async function startMemorize() {
   }
 }
 
-function goToNextQuestion() {
-  if (!hasMoreQuestions()) {
-    showFinalSummary();
+function goToNextVerse() {
+  if (currentVerseIndex + 1 < quizVerses.length) {
+    currentVerseIndex += 1;
+    renderCurrentVerse();
+    setMessage(
+      currentQuizMode === 'choice'
+        ? '請答完本節所有選擇題後再提交。'
+        : '請填完本節所有空格後再提交。',
+      false
+    );
     return;
   }
 
-  currentQuestionIndex += 1;
-  renderCurrentQuestion();
-}
-
-function goToNextVerse() {
   const book = booksSelect.value || currentQuizMeta?.book;
   const chapter = chapterSelect.value || String(currentQuizMeta?.chapter || '');
 
@@ -482,12 +528,14 @@ function goToNextVerse() {
   }
 
   const verseCount = bibleIndex[book][chapter];
-  const currentVerse = Number(verseSelect.value || currentQuizMeta?.verse || 0);
-  let nextVerse = Number.isInteger(currentVerse) && currentVerse > 0 ? currentVerse + 1 : 2;
+  const currentVerse = Number(
+    verseSelect.value || currentQuizMeta?.verse || quizVerses[currentVerseIndex]?.verse || 0
+  );
+  const nextVerse = Number.isInteger(currentVerse) && currentVerse > 0 ? currentVerse + 1 : 2;
 
   if (!Number.isInteger(verseCount) || nextVerse > verseCount) {
+    showFinalSummary();
     setMessage('已到本章最後一節。', false);
-    hideNavButtons();
     return;
   }
 
@@ -521,12 +569,12 @@ booksSelect.addEventListener('change', () => updateChapters({ clearQuiz: false }
 chapterSelect.addEventListener('change', () => updateVerses({ clearQuiz: false }));
 startMemorizeBtn.addEventListener('click', startMemorize);
 retryMaskBtn.addEventListener('click', startMemorize);
-nextQuestionBtn.addEventListener('click', goToNextQuestion);
+submitAnswersBtn.addEventListener('click', submitCurrentVerseAnswers);
 nextVerseBtn.addEventListener('click', goToNextVerse);
 
 document.querySelectorAll('input[name="quizMode"]').forEach((radio) => {
   radio.addEventListener('change', () => {
-    if (quizQuestions.length > 0 || memorizeDefaults.autoStart) {
+    if (quizVerses.length > 0 || memorizeDefaults.autoStart) {
       startMemorize();
     }
   });

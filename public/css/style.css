@@ -316,14 +316,20 @@ button:hover {
   opacity: 1;
 }
 
-#nextQuestionBtn,
+#submitAnswersBtn,
 #nextVerseBtn {
   background: linear-gradient(135deg, var(--green-deep) 0%, var(--green-primary) 100%);
 }
 
-#nextQuestionBtn:hover,
+#submitAnswersBtn:hover,
 #nextVerseBtn:hover {
   background: linear-gradient(135deg, #0d2818 0%, var(--green-deep) 100%);
+}
+
+#submitAnswersBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 .grading-result h3 {
