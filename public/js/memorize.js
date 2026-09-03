@@ -360,10 +360,24 @@ function renderCurrentVerse() {
   updateVerseNavButtons();
 }
 
+function findAnswerItem(blankId) {
+  return memorizeResult.querySelector(`.answer-item[data-blank-id="${blankId}"]`);
+}
+
 function appendBlankFeedback(container, isCorrect, expectedAnswer) {
+  if (!container) {
+    return;
+  }
+
+  container.querySelectorAll('.question-feedback').forEach((node) => node.remove());
+
   const feedback = document.createElement('p');
   feedback.className = `question-feedback ${isCorrect ? 'ok' : 'bad'}`;
-  feedback.textContent = isCorrect ? '答對了！' : `答錯了，正確答案：${expectedAnswer}`;
+  feedback.textContent = isCorrect
+    ? '✓ 答對了！'
+    : `✗ 答錯了，正確答案：${expectedAnswer}`;
+  container.classList.toggle('answered-ok', isCorrect);
+  container.classList.toggle('answered-bad', !isCorrect);
   container.appendChild(feedback);
 }
 
@@ -371,6 +385,7 @@ function markChoiceGroup(group, selectedAnswer, expectedAnswer) {
   group.querySelectorAll('.choice-button').forEach((button) => {
     const isExpected = button.dataset.answer === expectedAnswer;
     const isSelected = button.dataset.answer === selectedAnswer;
+    button.classList.remove('selected');
     button.classList.toggle('correct', isExpected);
     button.classList.toggle('incorrect', isSelected && !isExpected);
     button.disabled = true;
@@ -384,13 +399,14 @@ function submitCurrentVerseAnswers() {
   }
 
   if (!allBlanksAnswered()) {
-    setMessage('請先完成本節所有空格再提交。', true);
+    setQuizMessage('請先完成本節所有空格再提交。', true);
     return;
   }
 
   isGraded = true;
   submitAnswersBtn.classList.add('hidden');
   gradingResult.innerHTML = '';
+  gradingResult.classList.remove('hidden');
 
   let verseCorrect = 0;
   const details = document.createElement('div');
@@ -399,22 +415,22 @@ function submitCurrentVerseAnswers() {
   verseData.blanks.forEach((blank) => {
     let userAnswer = '';
     let isCorrect = false;
+    const item = findAnswerItem(blank.id);
 
     if (currentQuizMode === 'choice') {
-      const group = memorizeResult.querySelector(`.choice-group[data-blank-id="${blank.id}"]`);
-      const item = group?.closest('.answer-item');
+      const group =
+        item?.querySelector('.choice-group') ||
+        memorizeResult.querySelector(`.choice-group[data-blank-id="${blank.id}"]`);
       const selected = group?.querySelector('.choice-button.selected');
       userAnswer = selected?.dataset.answer || '';
       isCorrect = userAnswer === blank.answer;
       if (group) {
         markChoiceGroup(group, userAnswer, blank.answer);
       }
-      if (item) {
-        appendBlankFeedback(item, isCorrect, blank.answer);
-      }
     } else {
-      const input = memorizeResult.querySelector(`input[data-blank="${blank.id}"]`);
-      const item = input?.closest('.answer-item');
+      const input =
+        item?.querySelector('input') ||
+        memorizeResult.querySelector(`input[data-blank="${blank.id}"]`);
       userAnswer = input?.value.trim() || '';
       isCorrect = userAnswer === blank.answer;
       if (input) {
@@ -422,37 +438,46 @@ function submitCurrentVerseAnswers() {
         input.classList.toggle('incorrect', !isCorrect);
         input.disabled = true;
       }
-      if (item) {
-        appendBlankFeedback(item, isCorrect, blank.answer);
-      }
     }
+
+    appendBlankFeedback(item, isCorrect, blank.answer);
 
     if (isCorrect) {
       verseCorrect += 1;
       correctCount += 1;
     }
 
-    const item = document.createElement('p');
-    item.className = `grading-item ${isCorrect ? 'ok' : 'bad'}`;
-    item.textContent = isCorrect
-      ? `空格 ${blank.id}：正確`
-      : `空格 ${blank.id}：錯誤（正確：${blank.answer}）`;
-    details.appendChild(item);
+    const line = document.createElement('p');
+    line.className = `grading-item ${isCorrect ? 'ok' : 'bad'}`;
+    line.textContent = isCorrect
+      ? `✓ 空格 ${blank.id}：正確`
+      : `✗ 空格 ${blank.id}：錯誤（你的答案：${userAnswer || '未作答'}；正確：${blank.answer}）`;
+    details.appendChild(line);
   });
+
+  const allCorrect = verseCorrect === verseData.blanks.length;
+  const banner = document.createElement('div');
+  banner.className = `grading-banner ${allCorrect ? 'ok' : 'bad'}`;
+  banner.textContent = allCorrect
+    ? `答對了！本節 ${verseCorrect} / ${verseData.blanks.length} 全對`
+    : `有答錯的題目：本節 ${verseCorrect} / ${verseData.blanks.length} 正確`;
 
   const summary = document.createElement('h3');
   summary.textContent = `本節結果：${verseCorrect} / ${verseData.blanks.length} 正確`;
+
+  gradingResult.appendChild(banner);
   gradingResult.appendChild(summary);
   gradingResult.appendChild(details);
 
   setQuizMessage(
-    verseCorrect === verseData.blanks.length
+    allCorrect
       ? '本節全部答對！可按「上一節」或「下一節」繼續。'
-      : '已完成本節批改，請參考正解後按「上一節」或「下一節」。',
-    verseCorrect !== verseData.blanks.length
+      : '已完成本節批改，請查看下方對錯後按「上一節」或「下一節」。',
+    !allCorrect
   );
 
   updateVerseNavButtons();
+  gradingResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function showFinalSummary() {

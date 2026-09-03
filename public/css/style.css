@@ -305,18 +305,72 @@ button:hover {
   display: none;
 }
 
+.quiz-message:not(.hidden) {
+  display: block;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.quiz-message:not(.hidden):not(.error) {
+  color: var(--green-deep);
+  background: var(--green-light);
+  border-left: 4px solid var(--green-primary);
+}
+
+.quiz-message.error {
+  color: #991b1b;
+  background: #fef2f2;
+  border-left: 4px solid #dc2626;
+}
+
+.answer-item.answered-ok {
+  border: 1px solid var(--green-primary);
+  background: rgba(216, 243, 220, 0.45);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.answer-item.answered-bad {
+  border: 1px solid #dc2626;
+  background: #fef2f2;
+  border-radius: 10px;
+  padding: 10px;
+}
+
 .question-feedback {
-  margin: 12px 0 0;
-  font-size: 15px;
-  font-weight: 600;
+  margin: 10px 0 0;
+  font-size: 16px;
+  font-weight: 700;
 }
 
 .question-feedback.ok {
-  color: var(--green-primary);
+  color: #166534;
 }
 
 .question-feedback.bad {
   color: #b91c1c;
+}
+
+.grading-banner {
+  margin: 0 0 10px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.grading-banner.ok {
+  color: #166534;
+  background: var(--green-light);
+  border: 1px solid var(--green-primary);
+}
+
+.grading-banner.bad {
+  color: #991b1b;
+  background: #fef2f2;
+  border: 1px solid #dc2626;
 }
 
 .choice-button:disabled {
@@ -437,21 +491,24 @@ button:hover {
 
 .choice-button.selected {
   border-color: var(--green-primary);
-  background: var(--green-light);
+  background: #ffffff;
   color: var(--green-deep);
-  box-shadow: 0 0 0 2px rgba(45, 106, 79, 0.2);
+  box-shadow: 0 0 0 2px rgba(45, 106, 79, 0.25);
 }
 
 .choice-button.correct {
-  border-color: var(--green-primary);
-  background: var(--green-light);
-  color: var(--green-deep);
+  border-color: #166534;
+  background: #86efac;
+  color: #14532d;
+  box-shadow: 0 0 0 2px rgba(22, 101, 52, 0.25);
 }
 
 .choice-button.incorrect {
-  border-color: #dc2626;
-  background: #fef2f2;
-  color: #b91c1c;
+  border-color: #b91c1c;
+  background: #fecaca;
+  color: #7f1d1d;
+  box-shadow: 0 0 0 2px rgba(185, 28, 28, 0.25);
+  text-decoration: line-through;
 }
 
 .container a:not(.secondary-button) {
