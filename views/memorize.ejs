@@ -9,7 +9,6 @@
   <body>
     <div class="container">
       <h1><%= title %></h1>
-      <p class="page-intro"><%= message %></p>
 
       <section class="home-section" aria-labelledby="custom-select-heading">
         <details id="customSelectPanel" class="dropdown-panel">
@@ -74,6 +73,7 @@
       </section>
 
       <section class="home-section quiz-demo-section">
+        <p id="quizMessage" class="form-message quiz-message hidden" aria-live="polite"></p>
         <section id="memorizeResult" class="scripture-result" aria-live="polite"></section>
         <section id="gradingResult" class="grading-result" aria-live="polite"></section>
         <div class="button-row quiz-actions">

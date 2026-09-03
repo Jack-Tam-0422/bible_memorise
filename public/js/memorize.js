@@ -8,7 +8,9 @@ const prevVerseBtn = document.getElementById('prevVerseBtn');
 const nextVerseBtn = document.getElementById('nextVerseBtn');
 const memorizeResult = document.getElementById('memorizeResult');
 const gradingResult = document.getElementById('gradingResult');
+const quizMessage = document.getElementById('quizMessage');
 const memorizeMessage = document.getElementById('memorizeMessage');
+const customSelectPanel = document.getElementById('customSelectPanel');
 const bibleIndex = window.bibleIndex || {};
 const memorizeDefaults = window.memorizeDefaults || {};
 
@@ -47,6 +49,29 @@ function setMessage(text, isError) {
   memorizeMessage.classList.toggle('error', isError);
 }
 
+function setQuizMessage(text, isError) {
+  if (!quizMessage) {
+    return;
+  }
+
+  if (!text) {
+    quizMessage.textContent = '';
+    quizMessage.classList.add('hidden');
+    quizMessage.classList.remove('error');
+    return;
+  }
+
+  quizMessage.textContent = text;
+  quizMessage.classList.remove('hidden');
+  quizMessage.classList.toggle('error', isError);
+}
+
+function collapseCustomSelectPanel() {
+  if (customSelectPanel) {
+    customSelectPanel.open = false;
+  }
+}
+
 function hideActionButtons() {
   submitAnswersBtn.classList.add('hidden');
   prevVerseBtn.classList.add('hidden');
@@ -62,6 +87,7 @@ function getCurrentVerseNumber() {
 function clearQuizResults() {
   memorizeResult.innerHTML = '';
   gradingResult.innerHTML = '';
+  setQuizMessage('');
   retryMaskBtn.classList.add('hidden');
   hideActionButtons();
   quizVerses = [];
@@ -281,6 +307,7 @@ function refreshSubmitAvailability() {
 function renderCurrentVerse() {
   memorizeResult.innerHTML = '';
   gradingResult.innerHTML = '';
+  setQuizMessage('');
   hideActionButtons();
   isGraded = false;
 
@@ -333,6 +360,13 @@ function renderCurrentVerse() {
   updateVerseNavButtons();
 }
 
+function appendBlankFeedback(container, isCorrect, expectedAnswer) {
+  const feedback = document.createElement('p');
+  feedback.className = `question-feedback ${isCorrect ? 'ok' : 'bad'}`;
+  feedback.textContent = isCorrect ? '答對了！' : `答錯了，正確答案：${expectedAnswer}`;
+  container.appendChild(feedback);
+}
+
 function markChoiceGroup(group, selectedAnswer, expectedAnswer) {
   group.querySelectorAll('.choice-button').forEach((button) => {
     const isExpected = button.dataset.answer === expectedAnswer;
@@ -368,20 +402,28 @@ function submitCurrentVerseAnswers() {
 
     if (currentQuizMode === 'choice') {
       const group = memorizeResult.querySelector(`.choice-group[data-blank-id="${blank.id}"]`);
+      const item = group?.closest('.answer-item');
       const selected = group?.querySelector('.choice-button.selected');
       userAnswer = selected?.dataset.answer || '';
       isCorrect = userAnswer === blank.answer;
       if (group) {
         markChoiceGroup(group, userAnswer, blank.answer);
       }
+      if (item) {
+        appendBlankFeedback(item, isCorrect, blank.answer);
+      }
     } else {
       const input = memorizeResult.querySelector(`input[data-blank="${blank.id}"]`);
+      const item = input?.closest('.answer-item');
       userAnswer = input?.value.trim() || '';
       isCorrect = userAnswer === blank.answer;
       if (input) {
         input.classList.toggle('correct', isCorrect);
         input.classList.toggle('incorrect', !isCorrect);
         input.disabled = true;
+      }
+      if (item) {
+        appendBlankFeedback(item, isCorrect, blank.answer);
       }
     }
 
@@ -403,7 +445,7 @@ function submitCurrentVerseAnswers() {
   gradingResult.appendChild(summary);
   gradingResult.appendChild(details);
 
-  setMessage(
+  setQuizMessage(
     verseCorrect === verseData.blanks.length
       ? '本節全部答對！可按「上一節」或「下一節」繼續。'
       : '已完成本節批改，請參考正解後按「上一節」或「下一節」。',
@@ -423,9 +465,9 @@ function showFinalSummary() {
   gradingResult.appendChild(summary);
 
   if (correctCount === totalBlankCount && totalBlankCount > 0) {
-    setMessage('太好了，全部答對！', false);
+    setQuizMessage('太好了，全部答對！', false);
   } else {
-    setMessage('已完成本次練習，可重新出題或更換章節。', false);
+    setQuizMessage('已完成本次練習，可重新出題或更換章節。', false);
   }
 
   isGraded = false;
@@ -486,6 +528,7 @@ async function startMemorize() {
     }
 
     renderMemorizeResult(data);
+    collapseCustomSelectPanel();
   } catch (error) {
     clearQuizResults();
     setMessage(error.message, true);

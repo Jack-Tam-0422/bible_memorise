@@ -559,7 +559,6 @@ const memorizeDefaults = {
 function renderMemorizePage(res, overrides = {}) {
   res.render('memorize', {
     title: '聖經背誦',
-    message: '先試示範題，或展開「自選背誦章節」練習其他經文。',
     books,
     bibleIndex,
     ...memorizeDefaults,
