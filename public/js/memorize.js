@@ -6,11 +6,9 @@ const retryMaskBtn = document.getElementById('retryMaskBtn');
 const submitAnswersBtn = document.getElementById('submitAnswersBtn');
 const prevVerseBtn = document.getElementById('prevVerseBtn');
 const nextVerseBtn = document.getElementById('nextVerseBtn');
-const quizProgress = document.getElementById('quizProgress');
 const memorizeResult = document.getElementById('memorizeResult');
 const gradingResult = document.getElementById('gradingResult');
 const memorizeMessage = document.getElementById('memorizeMessage');
-const demoHeading = document.getElementById('demo-heading');
 const bibleIndex = window.bibleIndex || {};
 const memorizeDefaults = window.memorizeDefaults || {};
 
@@ -64,8 +62,6 @@ function getCurrentVerseNumber() {
 function clearQuizResults() {
   memorizeResult.innerHTML = '';
   gradingResult.innerHTML = '';
-  quizProgress.classList.add('hidden');
-  quizProgress.textContent = '';
   retryMaskBtn.classList.add('hidden');
   hideActionButtons();
   quizVerses = [];
@@ -74,19 +70,6 @@ function clearQuizResults() {
   totalBlankCount = 0;
   currentQuizMeta = null;
   isGraded = false;
-}
-
-function updateDemoHeading(book, chapter, verse) {
-  if (!demoHeading) {
-    return;
-  }
-
-  if (verse) {
-    demoHeading.textContent = `練習題：${book} ${chapter}:${verse}`;
-    return;
-  }
-
-  demoHeading.textContent = `練習題：${book} 第 ${chapter} 章`;
 }
 
 function updateChapters(options = {}) {
@@ -149,18 +132,6 @@ function buildQuizVerses(data) {
 
 function countAllBlanks(verses) {
   return verses.reduce((total, verseData) => total + verseData.blanks.length, 0);
-}
-
-function updateProgress() {
-  if (quizVerses.length === 0) {
-    quizProgress.classList.add('hidden');
-    quizProgress.textContent = '';
-    return;
-  }
-
-  const current = quizVerses[currentVerseIndex];
-  quizProgress.classList.remove('hidden');
-  quizProgress.textContent = `第 ${currentVerseIndex + 1} / ${quizVerses.length} 節（本節 ${current.blanks.length} 題）`;
 }
 
 function canGoPreviousVerse() {
@@ -314,7 +285,6 @@ function renderCurrentVerse() {
   isGraded = false;
 
   if (!currentQuizMeta || quizVerses.length === 0) {
-    updateProgress();
     setMessage('此範圍沒有可練習的題目，請更換章節或重新出題。', true);
     return;
   }
@@ -325,8 +295,6 @@ function renderCurrentVerse() {
   }
 
   const verseData = quizVerses[currentVerseIndex];
-  updateProgress();
-  updateDemoHeading(currentQuizMeta.book, currentQuizMeta.chapter, verseData.verse);
 
   const header = document.createElement('h2');
   header.textContent = `${currentQuizMeta.book} ${currentQuizMeta.chapter}:${verseData.verse}`;
@@ -460,7 +428,6 @@ function showFinalSummary() {
     setMessage('已完成本次練習，可重新出題或更換章節。', false);
   }
 
-  quizProgress.classList.add('hidden');
   isGraded = false;
 }
 
