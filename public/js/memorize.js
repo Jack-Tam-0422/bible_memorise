@@ -4,6 +4,7 @@ const verseSelect = document.getElementById('verse');
 const startMemorizeBtn = document.getElementById('startMemorizeBtn');
 const retryMaskBtn = document.getElementById('retryMaskBtn');
 const submitAnswersBtn = document.getElementById('submitAnswersBtn');
+const prevVerseBtn = document.getElementById('prevVerseBtn');
 const nextVerseBtn = document.getElementById('nextVerseBtn');
 const quizProgress = document.getElementById('quizProgress');
 const memorizeResult = document.getElementById('memorizeResult');
@@ -50,7 +51,14 @@ function setMessage(text, isError) {
 
 function hideActionButtons() {
   submitAnswersBtn.classList.add('hidden');
+  prevVerseBtn.classList.add('hidden');
   nextVerseBtn.classList.add('hidden');
+}
+
+function getCurrentVerseNumber() {
+  return Number(
+    verseSelect.value || currentQuizMeta?.verse || quizVerses[currentVerseIndex]?.verse || 0
+  );
 }
 
 function clearQuizResults() {
@@ -155,6 +163,15 @@ function updateProgress() {
   quizProgress.textContent = `第 ${currentVerseIndex + 1} / ${quizVerses.length} 節（本節 ${current.blanks.length} 題）`;
 }
 
+function canGoPreviousVerse() {
+  if (currentVerseIndex > 0) {
+    return true;
+  }
+
+  const currentVerse = getCurrentVerseNumber();
+  return Number.isInteger(currentVerse) && currentVerse > 1;
+}
+
 function canGoNextVerse() {
   if (!currentQuizMeta) {
     return false;
@@ -171,14 +188,17 @@ function canGoNextVerse() {
     return false;
   }
 
-  const currentVerse = Number(
-    verseSelect.value || currentQuizMeta.verse || quizVerses[currentVerseIndex]?.verse || 0
-  );
+  const currentVerse = getCurrentVerseNumber();
   if (!Number.isInteger(currentVerse) || currentVerse <= 0) {
     return verseCount > 1;
   }
 
   return currentVerse < verseCount;
+}
+
+function updateVerseNavButtons() {
+  prevVerseBtn.classList.toggle('hidden', !canGoPreviousVerse());
+  nextVerseBtn.classList.toggle('hidden', !canGoNextVerse());
 }
 
 function createChoiceGroup(blank) {
@@ -416,14 +436,12 @@ function submitCurrentVerseAnswers() {
 
   setMessage(
     verseCorrect === verseData.blanks.length
-      ? '本節全部答對！可按「下一節」繼續。'
-      : '已完成本節批改，請參考正解後按「下一節」。',
+      ? '本節全部答對！可按「上一節」或「下一節」繼續。'
+      : '已完成本節批改，請參考正解後按「上一節」或「下一節」。',
     verseCorrect !== verseData.blanks.length
   );
 
-  if (canGoNextVerse() || currentVerseIndex + 1 < quizVerses.length) {
-    nextVerseBtn.classList.remove('hidden');
-  }
+  updateVerseNavButtons();
 }
 
 function showFinalSummary() {
@@ -467,8 +485,8 @@ function renderMemorizeResult(data) {
   renderCurrentVerse();
   setMessage(
     currentQuizMode === 'choice'
-      ? '請答完本節所有選擇題後再提交，批改後可按「下一節」。'
-      : '請填完本節所有空格後再提交，批改後可按「下一節」。',
+      ? '請答完本節所有選擇題後再提交，批改後可按「上一節」或「下一節」。'
+      : '請填完本節所有空格後再提交，批改後可按「上一節」或「下一節」。',
     false
   );
 }
@@ -506,6 +524,43 @@ async function startMemorize() {
   }
 }
 
+function goToPreviousVerse() {
+  if (currentVerseIndex > 0) {
+    currentVerseIndex -= 1;
+    renderCurrentVerse();
+    setMessage(
+      currentQuizMode === 'choice'
+        ? '請答完本節所有選擇題後再提交。'
+        : '請填完本節所有空格後再提交。',
+      false
+    );
+    return;
+  }
+
+  const book = booksSelect.value || currentQuizMeta?.book;
+  const chapter = chapterSelect.value || String(currentQuizMeta?.chapter || '');
+
+  if (!book || !chapter || !bibleIndex[book]) {
+    setMessage('無法載入上一節，請重新選擇章節。', true);
+    return;
+  }
+
+  const currentVerse = getCurrentVerseNumber();
+  if (!Number.isInteger(currentVerse) || currentVerse <= 1) {
+    setMessage('已是本章第一節。', false);
+    return;
+  }
+
+  const previousVerse = currentVerse - 1;
+
+  if (!verseSelect.querySelector(`option[value="${previousVerse}"]`)) {
+    updateVerses({ clearQuiz: false });
+  }
+
+  verseSelect.value = String(previousVerse);
+  startMemorize();
+}
+
 function goToNextVerse() {
   if (currentVerseIndex + 1 < quizVerses.length) {
     currentVerseIndex += 1;
@@ -528,9 +583,7 @@ function goToNextVerse() {
   }
 
   const verseCount = bibleIndex[book][chapter];
-  const currentVerse = Number(
-    verseSelect.value || currentQuizMeta?.verse || quizVerses[currentVerseIndex]?.verse || 0
-  );
+  const currentVerse = getCurrentVerseNumber();
   const nextVerse = Number.isInteger(currentVerse) && currentVerse > 0 ? currentVerse + 1 : 2;
 
   if (!Number.isInteger(verseCount) || nextVerse > verseCount) {
@@ -570,6 +623,7 @@ chapterSelect.addEventListener('change', () => updateVerses({ clearQuiz: false }
 startMemorizeBtn.addEventListener('click', startMemorize);
 retryMaskBtn.addEventListener('click', startMemorize);
 submitAnswersBtn.addEventListener('click', submitCurrentVerseAnswers);
+prevVerseBtn.addEventListener('click', goToPreviousVerse);
 nextVerseBtn.addEventListener('click', goToNextVerse);
 
 document.querySelectorAll('input[name="quizMode"]').forEach((radio) => {

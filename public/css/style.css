@@ -317,11 +317,13 @@ button:hover {
 }
 
 #submitAnswersBtn,
+#prevVerseBtn,
 #nextVerseBtn {
   background: linear-gradient(135deg, var(--green-deep) 0%, var(--green-primary) 100%);
 }
 
 #submitAnswersBtn:hover,
+#prevVerseBtn:hover,
 #nextVerseBtn:hover {
   background: linear-gradient(135deg, #0d2818 0%, var(--green-deep) 100%);
 }
