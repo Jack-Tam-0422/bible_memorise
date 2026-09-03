@@ -278,6 +278,24 @@ button:hover {
   color: var(--green-deep);
 }
 
+.continue-hint {
+  margin: 10px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--green-deep);
+}
+
+.continue-hint.hidden {
+  display: none;
+}
+
+.grading-stay-note {
+  margin: 10px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--warm-muted);
+}
+
 .quiz-actions {
   margin-top: 12px;
 }

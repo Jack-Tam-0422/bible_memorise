@@ -8,6 +8,7 @@ const prevVerseBtn = document.getElementById('prevVerseBtn');
 const nextVerseBtn = document.getElementById('nextVerseBtn');
 const memorizeResult = document.getElementById('memorizeResult');
 const gradingResult = document.getElementById('gradingResult');
+const continueHint = document.getElementById('continueHint');
 const quizMessage = document.getElementById('quizMessage');
 const memorizeMessage = document.getElementById('memorizeMessage');
 const customSelectPanel = document.getElementById('customSelectPanel');
@@ -21,6 +22,8 @@ let totalBlankCount = 0;
 let currentQuizMode = 'choice';
 let currentQuizMeta = null;
 let isGraded = false;
+let navigationUnlockTimer = null;
+let navigationLocked = false;
 
 function getSelectedQuizMode() {
   const selected = document.querySelector('input[name="quizMode"]:checked');
@@ -76,6 +79,38 @@ function hideActionButtons() {
   submitAnswersBtn.classList.add('hidden');
   prevVerseBtn.classList.add('hidden');
   nextVerseBtn.classList.add('hidden');
+  if (continueHint) {
+    continueHint.classList.add('hidden');
+  }
+}
+
+function clearNavigationUnlockTimer() {
+  if (navigationUnlockTimer) {
+    clearTimeout(navigationUnlockTimer);
+    navigationUnlockTimer = null;
+  }
+}
+
+function unlockNavigation() {
+  clearNavigationUnlockTimer();
+  navigationLocked = false;
+}
+
+function setContinueHintVisible(visible) {
+  if (!continueHint) {
+    return;
+  }
+  continueHint.classList.toggle('hidden', !visible);
+}
+
+function updateVerseNavButtons() {
+  const showPrev = !navigationLocked && canGoPreviousVerse();
+  const showNext = !navigationLocked && canGoNextVerse();
+  prevVerseBtn.classList.toggle('hidden', !showPrev);
+  nextVerseBtn.classList.toggle('hidden', !showNext);
+  prevVerseBtn.disabled = navigationLocked;
+  nextVerseBtn.disabled = navigationLocked;
+  setContinueHintVisible(isGraded && (showPrev || showNext));
 }
 
 function getCurrentVerseNumber() {
@@ -85,6 +120,7 @@ function getCurrentVerseNumber() {
 }
 
 function clearQuizResults() {
+  unlockNavigation();
   memorizeResult.innerHTML = '';
   gradingResult.innerHTML = '';
   setQuizMessage('');
@@ -191,11 +227,6 @@ function canGoNextVerse() {
   }
 
   return currentVerse < verseCount;
-}
-
-function updateVerseNavButtons() {
-  prevVerseBtn.classList.toggle('hidden', !canGoPreviousVerse());
-  nextVerseBtn.classList.toggle('hidden', !canGoNextVerse());
 }
 
 function createChoiceGroup(blank) {
@@ -305,6 +336,7 @@ function refreshSubmitAvailability() {
 }
 
 function renderCurrentVerse() {
+  unlockNavigation();
   memorizeResult.innerHTML = '';
   gradingResult.innerHTML = '';
   setQuizMessage('');
@@ -403,8 +435,15 @@ function submitCurrentVerseAnswers() {
     return;
   }
 
+  // Stay on this verse: show right/wrong first. Lock nav briefly so a
+  // second click can't jump to the next verse before results are seen.
   isGraded = true;
+  clearNavigationUnlockTimer();
+  navigationLocked = true;
   submitAnswersBtn.classList.add('hidden');
+  prevVerseBtn.classList.add('hidden');
+  nextVerseBtn.classList.add('hidden');
+  setContinueHintVisible(false);
   gradingResult.innerHTML = '';
   gradingResult.classList.remove('hidden');
 
@@ -465,19 +504,29 @@ function submitCurrentVerseAnswers() {
   const summary = document.createElement('h3');
   summary.textContent = `本節結果：${verseCorrect} / ${verseData.blanks.length} 正確`;
 
+  const stayNote = document.createElement('p');
+  stayNote.className = 'grading-stay-note';
+  stayNote.textContent = '請先查看對錯，確認後再按「下一節」繼續。';
+
   gradingResult.appendChild(banner);
   gradingResult.appendChild(summary);
   gradingResult.appendChild(details);
+  gradingResult.appendChild(stayNote);
 
   setQuizMessage(
     allCorrect
-      ? '本節全部答對！可按「上一節」或「下一節」繼續。'
-      : '已完成本節批改，請查看下方對錯後按「上一節」或「下一節」。',
+      ? '本節全部答對！請查看結果後，再按「下一節」繼續。'
+      : '已完成本節批改。請查看對錯後，再按「下一節」繼續。',
     !allCorrect
   );
 
-  updateVerseNavButtons();
   gradingResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  navigationUnlockTimer = setTimeout(() => {
+    navigationLocked = false;
+    navigationUnlockTimer = null;
+    updateVerseNavButtons();
+  }, 600);
 }
 
 function showFinalSummary() {
@@ -561,6 +610,11 @@ async function startMemorize() {
 }
 
 function goToPreviousVerse() {
+  if (navigationLocked) {
+    return;
+  }
+
+  unlockNavigation();
   if (currentVerseIndex > 0) {
     currentVerseIndex -= 1;
     renderCurrentVerse();
@@ -598,6 +652,11 @@ function goToPreviousVerse() {
 }
 
 function goToNextVerse() {
+  if (navigationLocked) {
+    return;
+  }
+
+  unlockNavigation();
   if (currentVerseIndex + 1 < quizVerses.length) {
     currentVerseIndex += 1;
     renderCurrentVerse();
