@@ -344,8 +344,8 @@ function renderCurrentVerse() {
   prompt.className = 'hint-text';
   prompt.textContent =
     currentQuizMode === 'choice'
-      ? `本節共 ${verseData.blanks.length} 題選擇題，請全部作答後再提交。`
-      : `本節共 ${verseData.blanks.length} 個空格，請全部填寫後再提交。`;
+      ? `本節共 ${verseData.blanks.length} 題選擇題，請全部作答後提交；也可先按「上一節」或「下一節」跳過。`
+      : `本節共 ${verseData.blanks.length} 個空格，請全部填寫後提交；也可先按「上一節」或「下一節」跳過。`;
   verseBlock.appendChild(prompt);
 
   const answerArea = document.createElement('div');
@@ -362,6 +362,7 @@ function renderCurrentVerse() {
   verseBlock.appendChild(answerArea);
   memorizeResult.appendChild(verseBlock);
   refreshSubmitAvailability();
+  updateVerseNavButtons();
 }
 
 function markChoiceGroup(group, selectedAnswer, expectedAnswer) {
@@ -485,8 +486,8 @@ function renderMemorizeResult(data) {
   renderCurrentVerse();
   setMessage(
     currentQuizMode === 'choice'
-      ? '請答完本節所有選擇題後再提交，批改後可按「上一節」或「下一節」。'
-      : '請填完本節所有空格後再提交，批改後可按「上一節」或「下一節」。',
+      ? '請答完本節所有選擇題後提交；也可隨時用「上一節」或「下一節」跳過。'
+      : '請填完本節所有空格後提交；也可隨時用「上一節」或「下一節」跳過。',
     false
   );
 }
@@ -530,8 +531,8 @@ function goToPreviousVerse() {
     renderCurrentVerse();
     setMessage(
       currentQuizMode === 'choice'
-        ? '請答完本節所有選擇題後再提交。'
-        : '請填完本節所有空格後再提交。',
+        ? '請答完本節所有選擇題後提交；也可隨時用「上一節」或「下一節」跳過。'
+        : '請填完本節所有空格後提交；也可隨時用「上一節」或「下一節」跳過。',
       false
     );
     return;
@@ -567,8 +568,8 @@ function goToNextVerse() {
     renderCurrentVerse();
     setMessage(
       currentQuizMode === 'choice'
-        ? '請答完本節所有選擇題後再提交。'
-        : '請填完本節所有空格後再提交。',
+        ? '請答完本節所有選擇題後提交；也可隨時用「上一節」或「下一節」跳過。'
+        : '請填完本節所有空格後提交；也可隨時用「上一節」或「下一節」跳過。',
       false
     );
     return;
