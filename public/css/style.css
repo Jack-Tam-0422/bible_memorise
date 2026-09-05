@@ -378,6 +378,20 @@ button:hover {
   padding: 10px;
 }
 
+.blank-result-label {
+  margin: 8px 0 0;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.blank-result-label.ok {
+  color: #166534;
+}
+
+.blank-result-label.bad {
+  color: #b91c1c;
+}
+
 .question-feedback {
   margin: 10px 0 0;
   font-size: 16px;

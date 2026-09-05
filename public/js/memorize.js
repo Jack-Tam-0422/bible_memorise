@@ -124,9 +124,9 @@ function hasStartedAnswering() {
 }
 
 function updateVerseNavButtons() {
-  // Skip allowed only before answering. After answering starts, hide nav
-  // until grading is done. After grading, show 下一節 to continue.
-  const allowNav = !navigationLocked && (isGraded || !hasStartedAnswering());
+  // Keep 上一節/下一節 available while answering multi-blank questions,
+  // and also after grading so the user can continue.
+  const allowNav = !navigationLocked;
   const showPrev = allowNav && canGoPreviousVerse();
   const showNext = allowNav && canGoNextVerse();
   prevVerseBtn.classList.toggle('hidden', !showPrev);
@@ -447,6 +447,12 @@ function markAnswerItem(container, isCorrect) {
 
   container.classList.toggle('answered-ok', isCorrect);
   container.classList.toggle('answered-bad', !isCorrect);
+
+  container.querySelectorAll('.blank-result-label').forEach((node) => node.remove());
+  const label = document.createElement('p');
+  label.className = `blank-result-label ${isCorrect ? 'ok' : 'bad'}`;
+  label.textContent = isCorrect ? '答對' : '答錯';
+  container.appendChild(label);
 }
 
 function markChoiceGroup(group, selectedAnswer, expectedAnswer) {
