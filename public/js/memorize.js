@@ -103,13 +103,36 @@ function setContinueHintVisible(visible) {
   continueHint.classList.toggle('hidden', !visible);
 }
 
+function hasStartedAnswering() {
+  const current = quizVerses[currentVerseIndex];
+  if (!current || isGraded) {
+    return false;
+  }
+
+  return current.blanks.some((blank) => {
+    if (currentQuizMode === 'choice') {
+      return Boolean(
+        memorizeResult.querySelector(
+          `.choice-group[data-blank-id="${blank.id}"] .choice-button.selected`
+        )
+      );
+    }
+
+    const input = memorizeResult.querySelector(`input[data-blank="${blank.id}"]`);
+    return Boolean(input && input.value.trim());
+  });
+}
+
 function updateVerseNavButtons() {
-  const showPrev = !navigationLocked && canGoPreviousVerse();
-  const showNext = !navigationLocked && canGoNextVerse();
+  // Skip allowed only before answering. After answering starts, hide nav
+  // until grading is done. After grading, show 下一節 to continue.
+  const allowNav = !navigationLocked && (isGraded || !hasStartedAnswering());
+  const showPrev = allowNav && canGoPreviousVerse();
+  const showNext = allowNav && canGoNextVerse();
   prevVerseBtn.classList.toggle('hidden', !showPrev);
   nextVerseBtn.classList.toggle('hidden', !showNext);
-  prevVerseBtn.disabled = navigationLocked;
-  nextVerseBtn.disabled = navigationLocked;
+  prevVerseBtn.disabled = !allowNav;
+  nextVerseBtn.disabled = !allowNav;
   setContinueHintVisible(isGraded && (showPrev || showNext));
 }
 
@@ -270,6 +293,13 @@ function createChoiceGroup(blank) {
       button.classList.add('selected');
       button.setAttribute('aria-pressed', 'true');
       refreshSubmitAvailability();
+      updateVerseNavButtons();
+
+      // Choice mode: once every blank is answered, grade immediately so
+      // the user sees right/wrong before 下一節 appears.
+      if (allBlanksAnswered()) {
+        submitCurrentVerseAnswers();
+      }
     });
 
     group.appendChild(button);
@@ -298,6 +328,14 @@ function createBlankInput(blank) {
   input.addEventListener('input', () => {
     if (!isGraded) {
       refreshSubmitAvailability();
+      updateVerseNavButtons();
+    }
+  });
+
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' && !isGraded && allBlanksAnswered()) {
+      event.preventDefault();
+      submitCurrentVerseAnswers();
     }
   });
 
@@ -327,6 +365,12 @@ function allBlanksAnswered() {
 
 function refreshSubmitAvailability() {
   if (isGraded || quizVerses.length === 0) {
+    submitAnswersBtn.classList.add('hidden');
+    return;
+  }
+
+  // Choice mode auto-grades when all blanks are selected.
+  if (currentQuizMode === 'choice') {
     submitAnswersBtn.classList.add('hidden');
     return;
   }
@@ -371,8 +415,8 @@ function renderCurrentVerse() {
   prompt.className = 'hint-text';
   prompt.textContent =
     currentQuizMode === 'choice'
-      ? `本節共 ${verseData.blanks.length} 題選擇題，請全部作答後提交；也可先按「上一節」或「下一節」跳過。`
-      : `本節共 ${verseData.blanks.length} 個空格，請全部填寫後提交；也可先按「上一節」或「下一節」跳過。`;
+      ? `本節共 ${verseData.blanks.length} 題選擇題：選完後會立刻顯示對錯，再按「下一節」繼續。`
+      : `本節共 ${verseData.blanks.length} 個空格：全部填完後按「提交答案」看對錯，再按「下一節」繼續。`;
   verseBlock.appendChild(prompt);
 
   const answerArea = document.createElement('div');
@@ -508,6 +552,14 @@ function submitCurrentVerseAnswers() {
   stayNote.className = 'grading-stay-note';
   stayNote.textContent = '請先查看對錯，確認後再按「下一節」繼續。';
 
+  // Also pin a clear result card above the verse so it can't be missed.
+  const inlineResult = document.createElement('div');
+  inlineResult.className = `inline-grade-result ${allCorrect ? 'ok' : 'bad'}`;
+  inlineResult.textContent = allCorrect
+    ? '✓ 答對了！看完後請按「下一節」繼續。'
+    : '✗ 答錯了，請看下方正解，再按「下一節」繼續。';
+  memorizeResult.prepend(inlineResult);
+
   gradingResult.appendChild(banner);
   gradingResult.appendChild(summary);
   gradingResult.appendChild(details);
@@ -520,13 +572,11 @@ function submitCurrentVerseAnswers() {
     !allCorrect
   );
 
-  gradingResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-  navigationUnlockTimer = setTimeout(() => {
-    navigationLocked = false;
-    navigationUnlockTimer = null;
-    updateVerseNavButtons();
-  }, 600);
+  // Results are on screen now; unlock so 下一節 can appear for a deliberate tap.
+  navigationLocked = false;
+  clearNavigationUnlockTimer();
+  updateVerseNavButtons();
+  inlineResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function showFinalSummary() {

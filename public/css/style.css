@@ -296,6 +296,27 @@ button:hover {
   color: var(--warm-muted);
 }
 
+.inline-grade-result {
+  margin: 0 0 14px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.inline-grade-result.ok {
+  color: #14532d;
+  background: #86efac;
+  border: 2px solid #166534;
+}
+
+.inline-grade-result.bad {
+  color: #7f1d1d;
+  background: #fecaca;
+  border: 2px solid #b91c1c;
+}
+
 .quiz-actions {
   margin-top: 12px;
 }
