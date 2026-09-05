@@ -133,7 +133,7 @@ function updateVerseNavButtons() {
   nextVerseBtn.classList.toggle('hidden', !showNext);
   prevVerseBtn.disabled = !allowNav;
   nextVerseBtn.disabled = !allowNav;
-  setContinueHintVisible(isGraded && (showPrev || showNext));
+  setContinueHintVisible(false);
 }
 
 function getCurrentVerseNumber() {
@@ -415,8 +415,8 @@ function renderCurrentVerse() {
   prompt.className = 'hint-text';
   prompt.textContent =
     currentQuizMode === 'choice'
-      ? `本節共 ${verseData.blanks.length} 題選擇題：選完後會立刻顯示對錯，再按「下一節」繼續。`
-      : `本節共 ${verseData.blanks.length} 個空格：全部填完後按「提交答案」看對錯，再按「下一節」繼續。`;
+      ? `本節共 ${verseData.blanks.length} 題選擇題：選完後會以綠/紅顯示對錯，再按「下一節」繼續。`
+      : `本節共 ${verseData.blanks.length} 個空格：全部填完後提交，綠/紅顯示對錯，再按「下一節」繼續。`;
   verseBlock.appendChild(prompt);
 
   const answerArea = document.createElement('div');
@@ -440,21 +440,13 @@ function findAnswerItem(blankId) {
   return memorizeResult.querySelector(`.answer-item[data-blank-id="${blankId}"]`);
 }
 
-function appendBlankFeedback(container, isCorrect, expectedAnswer) {
+function markAnswerItem(container, isCorrect) {
   if (!container) {
     return;
   }
 
-  container.querySelectorAll('.question-feedback').forEach((node) => node.remove());
-
-  const feedback = document.createElement('p');
-  feedback.className = `question-feedback ${isCorrect ? 'ok' : 'bad'}`;
-  feedback.textContent = isCorrect
-    ? '✓ 答對了！'
-    : `✗ 答錯了，正確答案：${expectedAnswer}`;
   container.classList.toggle('answered-ok', isCorrect);
   container.classList.toggle('answered-bad', !isCorrect);
-  container.appendChild(feedback);
 }
 
 function markChoiceGroup(group, selectedAnswer, expectedAnswer) {
@@ -479,21 +471,16 @@ function submitCurrentVerseAnswers() {
     return;
   }
 
-  // Stay on this verse: show right/wrong first. Lock nav briefly so a
-  // second click can't jump to the next verse before results are seen.
+  // Stay on this verse and show green/red only. Nav unlocks so the user
+  // can press 下一節 after checking the colors.
   isGraded = true;
   clearNavigationUnlockTimer();
-  navigationLocked = true;
+  navigationLocked = false;
   submitAnswersBtn.classList.add('hidden');
-  prevVerseBtn.classList.add('hidden');
-  nextVerseBtn.classList.add('hidden');
   setContinueHintVisible(false);
+  setQuizMessage('');
   gradingResult.innerHTML = '';
-  gradingResult.classList.remove('hidden');
-
-  let verseCorrect = 0;
-  const details = document.createElement('div');
-  details.className = 'grading-details';
+  gradingResult.classList.add('hidden');
 
   verseData.blanks.forEach((blank) => {
     let userAnswer = '';
@@ -523,60 +510,14 @@ function submitCurrentVerseAnswers() {
       }
     }
 
-    appendBlankFeedback(item, isCorrect, blank.answer);
+    markAnswerItem(item, isCorrect);
 
     if (isCorrect) {
-      verseCorrect += 1;
       correctCount += 1;
     }
-
-    const line = document.createElement('p');
-    line.className = `grading-item ${isCorrect ? 'ok' : 'bad'}`;
-    line.textContent = isCorrect
-      ? `✓ 空格 ${blank.id}：正確`
-      : `✗ 空格 ${blank.id}：錯誤（你的答案：${userAnswer || '未作答'}；正確：${blank.answer}）`;
-    details.appendChild(line);
   });
 
-  const allCorrect = verseCorrect === verseData.blanks.length;
-  const banner = document.createElement('div');
-  banner.className = `grading-banner ${allCorrect ? 'ok' : 'bad'}`;
-  banner.textContent = allCorrect
-    ? `答對了！本節 ${verseCorrect} / ${verseData.blanks.length} 全對`
-    : `有答錯的題目：本節 ${verseCorrect} / ${verseData.blanks.length} 正確`;
-
-  const summary = document.createElement('h3');
-  summary.textContent = `本節結果：${verseCorrect} / ${verseData.blanks.length} 正確`;
-
-  const stayNote = document.createElement('p');
-  stayNote.className = 'grading-stay-note';
-  stayNote.textContent = '請先查看對錯，確認後再按「下一節」繼續。';
-
-  // Also pin a clear result card above the verse so it can't be missed.
-  const inlineResult = document.createElement('div');
-  inlineResult.className = `inline-grade-result ${allCorrect ? 'ok' : 'bad'}`;
-  inlineResult.textContent = allCorrect
-    ? '✓ 答對了！看完後請按「下一節」繼續。'
-    : '✗ 答錯了，請看下方正解，再按「下一節」繼續。';
-  memorizeResult.prepend(inlineResult);
-
-  gradingResult.appendChild(banner);
-  gradingResult.appendChild(summary);
-  gradingResult.appendChild(details);
-  gradingResult.appendChild(stayNote);
-
-  setQuizMessage(
-    allCorrect
-      ? '本節全部答對！請查看結果後，再按「下一節」繼續。'
-      : '已完成本節批改。請查看對錯後，再按「下一節」繼續。',
-    !allCorrect
-  );
-
-  // Results are on screen now; unlock so 下一節 can appear for a deliberate tap.
-  navigationLocked = false;
-  clearNavigationUnlockTimer();
   updateVerseNavButtons();
-  inlineResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function showFinalSummary() {
@@ -619,8 +560,8 @@ function renderMemorizeResult(data) {
   renderCurrentVerse();
   setMessage(
     currentQuizMode === 'choice'
-      ? '請答完本節所有選擇題後提交；也可隨時用「上一節」或「下一節」跳過。'
-      : '請填完本節所有空格後提交；也可隨時用「上一節」或「下一節」跳過。',
+      ? '選完答案後會以綠/紅顯示對錯，再按「下一節」繼續。'
+      : '填完並提交後會以綠/紅顯示對錯，再按「下一節」繼續。',
     false
   );
 }
