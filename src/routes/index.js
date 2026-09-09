@@ -431,7 +431,43 @@ function attachChoicesToVerses(verses, chapterVerses) {
   });
 }
 
-function buildMaskedVerse(verseText) {
+const BLANK_DENSITY_PRESETS = {
+  low: {
+    ratio: 0.15,
+    maxBlanks: 2,
+    maxMaskedChars: 4,
+    minFloorShort: 2,
+    minFloorLong: 2,
+    longThreshold: 12
+  },
+  // Matches the previous fixed blank-creation behavior.
+  medium: {
+    ratio: 0.3,
+    maxBlanks: 3,
+    maxMaskedChars: 6,
+    minFloorShort: 2,
+    minFloorLong: 3,
+    longThreshold: 12
+  },
+  high: {
+    ratio: 0.5,
+    maxBlanks: 6,
+    maxMaskedChars: 14,
+    minFloorShort: 2,
+    minFloorLong: 4,
+    longThreshold: 12
+  }
+};
+
+function resolveBlankDensity(density) {
+  if (density && BLANK_DENSITY_PRESETS[density]) {
+    return density;
+  }
+  return 'medium';
+}
+
+function buildMaskedVerse(verseText, density = 'medium') {
+  const preset = BLANK_DENSITY_PRESETS[resolveBlankDensity(density)];
   const chars = Array.from(verseText);
   const maskableIndices = chars
     .map((char, index) => (isMaskableChar(char) ? index : -1))
@@ -441,9 +477,17 @@ function buildMaskedVerse(verseText) {
     return { maskedText: verseText, blanks: [] };
   }
 
-  let targetMaskCount = Math.round(maskableIndices.length * 0.3);
-  targetMaskCount = Math.max(maskableIndices.length >= 12 ? 3 : 2, targetMaskCount);
-  targetMaskCount = Math.min(6, targetMaskCount, maskableIndices.length);
+  const floor =
+    maskableIndices.length >= preset.longThreshold
+      ? preset.minFloorLong
+      : preset.minFloorShort;
+  let targetMaskCount = Math.round(maskableIndices.length * preset.ratio);
+  targetMaskCount = Math.max(floor, targetMaskCount);
+  targetMaskCount = Math.min(
+    preset.maxMaskedChars,
+    targetMaskCount,
+    maskableIndices.length
+  );
 
   const runs = [];
   let runStart = null;
@@ -474,7 +518,7 @@ function buildMaskedVerse(verseText) {
   let remaining = targetMaskCount;
 
   shuffle(runs).forEach((run) => {
-    if (remaining < 2 || segments.length >= 3) {
+    if (remaining < 2 || segments.length >= preset.maxBlanks) {
       return;
     }
 
@@ -553,6 +597,7 @@ const memorizeDefaults = {
   defaultChapter: 1,
   defaultVerse: 1,
   defaultMode: 'choice',
+  defaultDensity: 'medium',
   autoStart: true
 };
 
@@ -621,7 +666,8 @@ router.get('/api/scripture', (req, res) => {
 });
 
 router.get('/api/memorize', (req, res) => {
-  const { book, chapter, verse, mode = 'blank' } = req.query;
+  const { book, chapter, verse, mode = 'blank', density: rawDensity } = req.query;
+  const density = resolveBlankDensity(rawDensity);
 
   if (!book || !chapter) {
     return res.status(400).json({ error: '請先選擇書卷與章。' });
@@ -629,6 +675,10 @@ router.get('/api/memorize', (req, res) => {
 
   if (mode !== 'blank' && mode !== 'choice') {
     return res.status(400).json({ error: '練習模式不正確。' });
+  }
+
+  if (rawDensity && !BLANK_DENSITY_PRESETS[rawDensity]) {
+    return res.status(400).json({ error: '空格密度不正確。' });
   }
 
   const chapterNumber = Number(chapter);
@@ -647,7 +697,7 @@ router.get('/api/memorize', (req, res) => {
       return res.status(400).json({ error: '節數超出範圍。' });
     }
 
-    const masked = buildMaskedVerse(chapterVerses[verseNumber - 1]);
+    const masked = buildMaskedVerse(chapterVerses[verseNumber - 1], density);
     let verses = [{ number: verseNumber, ...masked }];
     if (mode === 'choice') {
       verses = attachChoicesToVerses(verses, chapterVerses);
@@ -655,6 +705,7 @@ router.get('/api/memorize', (req, res) => {
 
     return res.json({
       mode,
+      density,
       book,
       chapter: chapterNumber,
       verses
@@ -663,7 +714,7 @@ router.get('/api/memorize', (req, res) => {
 
   let verses = chapterVerses.map((text, index) => ({
     number: index + 1,
-    ...buildMaskedVerse(text)
+    ...buildMaskedVerse(text, density)
   }));
 
   if (mode === 'choice') {
@@ -672,6 +723,7 @@ router.get('/api/memorize', (req, res) => {
 
   return res.json({
     mode,
+    density,
     book,
     chapter: chapterNumber,
     verses

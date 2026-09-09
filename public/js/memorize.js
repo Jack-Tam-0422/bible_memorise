@@ -14,6 +14,8 @@ const memorizeMessage = document.getElementById('memorizeMessage');
 const customSelectPanel = document.getElementById('customSelectPanel');
 const bibleIndex = window.bibleIndex || {};
 const memorizeDefaults = window.memorizeDefaults || {};
+const DENSITY_STORAGE_KEY = 'memorizeBlankDensity';
+const VALID_DENSITIES = new Set(['low', 'medium', 'high']);
 
 let quizVerses = [];
 let currentVerseIndex = 0;
@@ -28,6 +30,46 @@ let navigationLocked = false;
 function getSelectedQuizMode() {
   const selected = document.querySelector('input[name="quizMode"]:checked');
   return selected ? selected.value : 'choice';
+}
+
+function getSelectedBlankDensity() {
+  const selected = document.querySelector('input[name="blankDensity"]:checked');
+  if (selected && VALID_DENSITIES.has(selected.value)) {
+    return selected.value;
+  }
+  return memorizeDefaults.defaultDensity || 'medium';
+}
+
+function setBlankDensitySelection(density) {
+  const value = VALID_DENSITIES.has(density) ? density : 'medium';
+  const radio = document.querySelector(`input[name="blankDensity"][value="${value}"]`);
+  if (radio) {
+    radio.checked = true;
+  }
+}
+
+function loadSavedBlankDensity() {
+  try {
+    const saved = localStorage.getItem(DENSITY_STORAGE_KEY);
+    if (VALID_DENSITIES.has(saved)) {
+      setBlankDensitySelection(saved);
+      return;
+    }
+  } catch (error) {
+    // Ignore storage failures and fall back to defaults.
+  }
+  setBlankDensitySelection(memorizeDefaults.defaultDensity || 'medium');
+}
+
+function saveBlankDensity(density) {
+  if (!VALID_DENSITIES.has(density)) {
+    return;
+  }
+  try {
+    localStorage.setItem(DENSITY_STORAGE_KEY, density);
+  } catch (error) {
+    // Ignore storage failures.
+  }
 }
 
 function resetSelect(selectElement, placeholder) {
@@ -577,6 +619,7 @@ async function startMemorize() {
   const chapter = chapterSelect.value;
   const verse = verseSelect.value;
   const mode = getSelectedQuizMode();
+  const density = getSelectedBlankDensity();
 
   if (!book || !chapter) {
     setMessage('書卷與章為必選，請先完成選擇。', true);
@@ -585,7 +628,7 @@ async function startMemorize() {
   }
 
   setMessage('正在產生背誦題目...', false);
-  const params = new URLSearchParams({ book, chapter, mode });
+  const params = new URLSearchParams({ book, chapter, mode, density });
   if (verse) {
     params.set('verse', verse);
   }
@@ -598,6 +641,7 @@ async function startMemorize() {
       throw new Error(data.error || '無法產生背誦題目。');
     }
 
+    saveBlankDensity(density);
     renderMemorizeResult(data);
     collapseCustomSelectPanel();
   } catch (error) {
@@ -726,6 +770,16 @@ document.querySelectorAll('input[name="quizMode"]').forEach((radio) => {
   });
 });
 
+document.querySelectorAll('input[name="blankDensity"]').forEach((radio) => {
+  radio.addEventListener('change', () => {
+    saveBlankDensity(getSelectedBlankDensity());
+    if (quizVerses.length > 0 || memorizeDefaults.autoStart) {
+      startMemorize();
+    }
+  });
+});
+
+loadSavedBlankDensity();
 applyDefaults();
 
 if (memorizeDefaults.autoStart) {

@@ -512,6 +512,10 @@ button:hover {
   accent-color: var(--green-primary);
 }
 
+.density-field .density-hint {
+  margin-top: 8px;
+}
+
 .choice-item .choice-label {
   margin: 0;
   font-weight: 600;

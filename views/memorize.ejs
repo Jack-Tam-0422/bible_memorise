@@ -56,6 +56,25 @@
               </div>
             </div>
 
+            <div class="field mode-field density-field">
+              <span class="mode-label">空格密度</span>
+              <div class="mode-toggle" role="radiogroup" aria-label="空格密度">
+                <label class="mode-option">
+                  <input type="radio" name="blankDensity" value="low" <%= defaultDensity === 'low' ? 'checked' : '' %> />
+                  <span>少（較易）</span>
+                </label>
+                <label class="mode-option">
+                  <input type="radio" name="blankDensity" value="medium" <%= defaultDensity === 'medium' ? 'checked' : '' %> />
+                  <span>中</span>
+                </label>
+                <label class="mode-option">
+                  <input type="radio" name="blankDensity" value="high" <%= defaultDensity === 'high' ? 'checked' : '' %> />
+                  <span>多（較難）</span>
+                </label>
+              </div>
+              <p class="hint-text density-hint">較長經文會自動產生較多空格；選「多」會更有挑戰。</p>
+            </div>
+
             <p id="memorizeMessage" class="form-message">
               展開後可自選書卷、章與節。不選節時會練習整章。
             </p>
@@ -91,6 +110,7 @@
         defaultChapter,
         defaultVerse,
         defaultMode,
+        defaultDensity,
         autoStart
       }) %>;
     </script>
